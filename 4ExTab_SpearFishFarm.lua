@@ -49,7 +49,7 @@ local autoFarmBoss     = true   -- Boss di WorldBoss
 local autoFarmRare     = false  -- Mythic/Legendary/Secret Sea4, Sea5, Sea8, Sea9
 local autoFarmIllahi   = false  -- Illahi Sea6, Sea7, Sea8, Sea10
 
--- Fire First (toggle dihapus dari UI, tetap aktif di logic)
+-- Fire First (tanpa toggle UI; otomatis ON jika ada AutoFarm aktif)
 local fireFirstEnabled   = true
 local fireChargeEnabled  = true
 
@@ -111,31 +111,6 @@ local rarityModeList = {
 }
 local rarityModeIndex = 1
 
--- Mapping nama lokasi untuk UI (tidak lagi tampil "Sea1-10")
-local SEA_UI_NAME_MAP = {
-    Sea1   = "Beginner River",
-    Sea2   = "Rushing Stream",
-    Sea3   = "Island Center Lake",
-    Sea4   = "Submerged Pond",
-    Sea5   = "Island Soul Sea (Nether Island)",
-    Sea6   = "Island Soul Sea Air (Nether Island)",
-    Sea7   = "Island Soul Sea Floating (Nether Island)",
-    Sea6_7 = "Island Soul Sea Air+Floating (Nether Island)",
-    Sea8   = "Wrecks Sea - Lower Layers (Under Water)",
-    Sea9   = "Wrecks Sea - Mid Layers (Under Water)",
-    Sea10  = "Wrecks Sea - Upper Layers (Under Water)",
-}
-
-local function getSeaDisplayNameForUi(seaCode)
-    if not seaCode or seaCode == "" then
-        return "-"
-    end
-    if seaCode == "Sea6&Sea7" or seaCode == "Sea6_7" then
-        return SEA_UI_NAME_MAP["Sea6_7"]
-    end
-    return SEA_UI_NAME_MAP[seaCode] or seaCode
-end
-
 -- AimLock + ESP Antena
 local aimLockEnabled    = true
 local espAntennaEnabled = true
@@ -150,7 +125,7 @@ local FARM_DELAY_MIN  = 0.00
 local FARM_DELAY_MAX  = 0.30
 local farmDelay       = 0.00
 
--- Status label UI (teks deskripsi status dikosongkan agar UI bersih)
+-- Status label (dihilangkan teksnya; fungsi updateStatusLabel dibuat no-op)
 local statusLabel
 
 -- Boss target
@@ -849,10 +824,10 @@ local function detectCurrentSea()
 
             for _, entry in ipairs(entries) do
                 local seaFolder = entry.folder
-                local okDesc, descendants = pcall(function()
+                local ok, descendants = pcall(function()
                     return seaFolder:GetDescendants()
                 end)
-                if okDesc and descendants then
+                if ok and descendants then
                     for _, inst in ipairs(descendants) do
                         if inst:IsA("BasePart") then
                             sum = sum + inst.Position
@@ -911,6 +886,13 @@ local function getActiveSeaEntries()
 
     return entries, displaySeaName
 end
+
+------------------- HELPER: FIRE FIRST AUTO FOLLOW AUTOFARM -------------------
+local function refreshFireFirstFromAutoFarm()
+    fireFirstEnabled = autoFarmAll or autoFarmBoss or autoFarmRare or autoFarmIllahi
+end
+
+refreshFireFirstFromAutoFarm()
 
 ------------------- HIT / FIRE HELPERS -------------------
 local function getHitPosFromFishInstance(fish)
@@ -1835,7 +1817,7 @@ local function createMainLayout()
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
     title.Position = UDim2.new(0, 14, 0, 4)
     title.Size = UDim2.new(1, -28, 0, 20)
-    title.Text = "Spear Fish Farm V1.4"
+    title.Text = "Spear Fish Farm V1.3"
 
     local subtitle = Instance.new("TextLabel")
     subtitle.Name = "Subtitle"
@@ -2098,13 +2080,9 @@ local function createSliderWithBox(parent, titleText, minValue, maxValue, initia
     return frame
 end
 
-------------------- STATUS LABEL -------------------
+------------------- STATUS LABEL (NO-OP) -------------------
 local function updateStatusLabel()
-    if not statusLabel then
-        return
-    end
-    -- Kosongkan teks status agar UI bersih (tanpa deskripsi panjang)
-    statusLabel.Text = ""
+    -- Dikosongkan agar tidak ada teks "Status" di UI
 end
 
 ------------------- CLIMATE + PER FISH UI SYNC -------------------
@@ -2157,7 +2135,7 @@ local function getPerFishCandidates()
     if uiMode == "Sea6_7" then
         allowedSeas["Sea6"] = true
         allowedSeas["Sea7"] = true
-        seaText = "Sea6_7"
+        seaText = "Sea6&Sea7"
     elseif uiMode == "Sea4" or uiMode == "Sea5" or uiMode == "Sea6" or uiMode == "Sea7" or uiMode == "Sea8" or uiMode == "Sea9" or uiMode == "Sea10" then
         allowedSeas[uiMode] = true
         seaText = uiMode
@@ -2235,9 +2213,9 @@ local function refreshPerFishButtons(force)
     end
 
     if perFishInfoLabel then
-        local locationText = getSeaDisplayNameForUi(seaName or "") or "Unknown"
-        local climateText  = climateTag or "All"
-        perFishInfoLabel.Text = string.format("Per Fish (Location: %s, Climate: %s) – %d opsi.", locationText, climateText, #configs)
+        local seaText     = seaName or "Unknown"
+        local climateText = climateTag or "All"
+        perFishInfoLabel.Text = string.format("Per Fish (Sea: %s, Climate: %s) – %d opsi.", seaText, climateText, #configs)
     end
 
     for _, cfg in ipairs(configs) do
@@ -2265,9 +2243,8 @@ local function buildAutoFarmCard(bodyScroll)
     scroll.Parent = card
     scroll.BackgroundTransparency = 1
     scroll.BorderSizePixel = 0
-    -- Digeser sedikit ke bawah supaya deskripsi tidak tertimpa
-    scroll.Position = UDim2.new(0, 0, 0, 48)
-    scroll.Size = UDim2.new(1, 0, 1, -48)
+    scroll.Position = UDim2.new(0, 0, 0, 40)
+    scroll.Size = UDim2.new(1, 0, 1, -40)
     scroll.ScrollBarThickness = 4
     scroll.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
     scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -2287,7 +2264,8 @@ local function buildAutoFarmCard(bodyScroll)
     local autoFarmRareButton   = createToggleButton(scroll, "AutoFarm Mythic/Legendary/Secret", autoFarmRare)
     local autoFarmIllahiButton = createToggleButton(scroll, "AutoFarm Illahi/Divine", autoFarmIllahi)
 
-    -- Toggle Fire First dihapus dari UI, tetapi logic tetap aktif
+    -- Fire First tidak punya toggle di UI. Mengikuti AutoFarm (refreshFireFirstFromAutoFarm).
+
     local aimLockButton        = createToggleButton(scroll, "AimLock Fish", aimLockEnabled)
     local espAntennaButton     = createToggleButton(scroll, "ESP Lines Fish", espAntennaEnabled)
 
@@ -2301,7 +2279,7 @@ local function buildAutoFarmCard(bodyScroll)
     seaModeButton.TextSize         = 11
     seaModeButton.TextColor3       = Color3.fromRGB(220, 220, 220)
     seaModeButton.TextWrapped      = true
-    seaModeButton.Size             = UDim2.new(1, 0, 0, 26)
+    seaModeButton.Size             = UDim2.new(1, 0, 0, 32)
 
     local seaModeCorner = Instance.new("UICorner")
     seaModeCorner.CornerRadius = UDim.new(0, 8)
@@ -2311,9 +2289,27 @@ local function buildAutoFarmCard(bodyScroll)
         local mode = seaModeList[seaModeIndex] or "AutoDetect"
         local desc
         if mode == "AutoDetect" then
-            desc = "Auto Detect Location"
+            desc = "AutoDetect (pilih lokasi otomatis)"
+        elseif mode == "Sea1" then
+            desc = "Beginner River"
+        elseif mode == "Sea2" then
+            desc = "Rushing Stream"
+        elseif mode == "Sea3" then
+            desc = "Island Center Lake"
+        elseif mode == "Sea4" then
+            desc = "Submerged Pond"
+        elseif mode == "Sea5" then
+            desc = "Island Soul Sea (Nether Island)"
+        elseif mode == "Sea6_7" then
+            desc = "Island Soul Sea Air+Floating (Nether Island)"
+        elseif mode == "Sea8" then
+            desc = "Wrecks Sea – Lower Layers (Under Water)"
+        elseif mode == "Sea9" then
+            desc = "Wrecks Sea – Mid Layers (Under Water)"
+        elseif mode == "Sea10" then
+            desc = "Wrecks Sea – Upper Layers (Under Water)"
         else
-            desc = getSeaDisplayNameForUi(mode)
+            desc = mode
         end
         seaModeButton.Text = "Sea Mode: " .. desc
     end
@@ -2391,43 +2387,37 @@ local function buildAutoFarmCard(bodyScroll)
     perFishInfoLabel.TextXAlignment = Enum.TextXAlignment.Left
     perFishInfoLabel.TextWrapped = true
     perFishInfoLabel.Size = UDim2.new(1, 0, 0, 30)
-    perFishInfoLabel.Text = "Per Fish (Location: -, Climate: -)."
+    perFishInfoLabel.Text = "Per Fish (Sea: -, Climate: -)."
 
-    statusLabel = Instance.new("TextLabel")
-    statusLabel.Name = "StatusLabel"
-    statusLabel.Parent = scroll
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Font = Enum.Font.Gotham
-    statusLabel.TextSize = 11
-    statusLabel.TextColor3 = Color3.fromRGB(185, 185, 185)
-    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-    statusLabel.TextWrapped = true
-    statusLabel.Size = UDim2.new(1, 0, 0, 58)
-    statusLabel.Text = ""
+    -- Tidak ada lagi StatusLabel yang menulis deskripsi panjang di bawah card
 
     updateStatusLabel()
     refreshPerFishButtons(true)
 
     table.insert(connections, autoFarmAllButton.MouseButton1Click:Connect(function()
         autoFarmAll = not autoFarmAll
+        refreshFireFirstFromAutoFarm()
         setToggleButtonState(autoFarmAllButton, "AutoFarm Universal", autoFarmAll)
         updateStatusLabel()
         notify("Spear Fish Farm", "AutoFarm Universal: " .. (autoFarmAll and "ON" or "OFF"), 2)
     end))
     table.insert(connections, autoFarmBossButton.MouseButton1Click:Connect(function()
         autoFarmBoss = not autoFarmBoss
+        refreshFireFirstFromAutoFarm()
         setToggleButtonState(autoFarmBossButton, "AutoFarm Boss", autoFarmBoss)
         updateStatusLabel()
         notify("Spear Fish Farm", "AutoFarm Boss: " .. (autoFarmBoss and "ON" or "OFF"), 2)
     end))
     table.insert(connections, autoFarmRareButton.MouseButton1Click:Connect(function()
         autoFarmRare = not autoFarmRare
+        refreshFireFirstFromAutoFarm()
         setToggleButtonState(autoFarmRareButton, "AutoFarm Mythic/Legendary/Secret", autoFarmRare)
         updateStatusLabel()
         notify("Spear Fish Farm", "AutoFarm Rare: " .. (autoFarmRare and "ON" or "OFF"), 2)
     end))
     table.insert(connections, autoFarmIllahiButton.MouseButton1Click:Connect(function()
         autoFarmIllahi = not autoFarmIllahi
+        refreshFireFirstFromAutoFarm()
         setToggleButtonState(autoFarmIllahiButton, "AutoFarm Illahi/Divine", autoFarmIllahi)
         updateStatusLabel()
         notify("Spear Fish Farm", "AutoFarm Illahi: " .. (autoFarmIllahi and "ON" or "OFF"), 2)
@@ -2467,9 +2457,9 @@ local function buildChestFarmCard(bodyScroll)
     local card = createCard(
         bodyScroll,
         "Chest Farm",
-        "Auto teleport smooth ke Chest dan kembali ke posisi awal setelah Chest habis. AutoTP Boss antar lokasi.",
+        "Auto teleport smooth ke Chest, kembali ke posisi awal setelah Chest habis, dan AutoTP Boss Point1/Point2.",
         2,
-        300
+        260
     )
 
     local container = Instance.new("Frame")
@@ -2477,9 +2467,8 @@ local function buildChestFarmCard(bodyScroll)
     container.Parent = card
     container.BackgroundTransparency = 1
     container.BorderSizePixel = 0
-    -- Digeser supaya subtitle tidak tertimpa
-    container.Position = UDim2.new(0, 0, 0, 48)
-    container.Size = UDim2.new(1, 0, 1, -48)
+    container.Position = UDim2.new(0, 0, 0, 40)
+    container.Size = UDim2.new(1, 0, 1, -40)
 
     local layout = Instance.new("UIListLayout")
     layout.Parent = container
@@ -2487,10 +2476,10 @@ local function buildChestFarmCard(bodyScroll)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Padding = UDim.new(0, 6)
 
-    local autoChestButton      = createToggleButton(container, "Auto Chest", autoChestEnabled)
-    local lastLocButton        = createToggleButton(container, "Last Location (Kembali ke posisi awal)", chestReturnEnabled)
-    local autoTpPoint1Button   = createToggleButton(container, "AutoTP Boss01 & Boss02", autoTpPoint1Enabled)
-    local autoTpPoint2Button   = createToggleButton(container, "AutoTP Boss03", autoTpPoint2Enabled)
+    local autoChestButton    = createToggleButton(container, "Auto Chest", autoChestEnabled)
+    local lastLocButton      = createToggleButton(container, "Last Location", chestReturnEnabled)
+    local autoTpPoint1Button = createToggleButton(container, "AutoTP Boss01 & Boss02", autoTpPoint1Enabled)
+    local autoTpPoint2Button = createToggleButton(container, "AutoTP Boss03", autoTpPoint2Enabled)
 
     table.insert(connections, autoChestButton.MouseButton1Click:Connect(function()
         autoChestEnabled = not autoChestEnabled
@@ -2508,7 +2497,7 @@ local function buildChestFarmCard(bodyScroll)
 
     table.insert(connections, lastLocButton.MouseButton1Click:Connect(function()
         chestReturnEnabled = not chestReturnEnabled
-        setToggleButtonState(lastLocButton, "Last Location (Kembali ke posisi awal)", chestReturnEnabled)
+        setToggleButtonState(lastLocButton, "Last Location", chestReturnEnabled)
         if not chestReturnEnabled then
             lastLocationCFrame = nil
         end
