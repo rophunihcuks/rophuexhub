@@ -5,7 +5,7 @@
 
 ------------------- ENV / SHORTCUT -------------------
 local frame   = TAB_FRAME
-local tabId   = TAB_ID or "spearfishing"
+local tabId   = TAB_ID or "spearfishmisc"
 
 local Players             = Players             or game:GetService("Players")
 local LocalPlayer         = LocalPlayer         or Players.LocalPlayer
