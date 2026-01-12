@@ -1,10 +1,10 @@
 --==========================================================
---  2AxaTab_Utilitas.lua (UI simple + checklist)
---  ShiftRun + Infinite Jump + Kompas HUD + Horizontal + Rejoin Voice + No Clip + Fly + Invisible (No Visual)
+--  2ExTab_Utilitas.lua (UI simple + checklist)
+--  ShiftRun + Infinite Jump + Compass + Horizontal + No Clip + Fly + Invisible (No Visual)
 --==========================================================
 
 ------------------- SERVICES / ENV -------------------
-local TAB = TAB_FRAME  -- frame dari CORE
+local TAB = TAB_FRAME  -- frame from CORE
 
 local Players              = game:GetService("Players")
 local RunService           = game:GetService("RunService")
@@ -19,13 +19,13 @@ local Workspace            = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local camera      = workspace.CurrentCamera
 
-local VoiceChatService
-do
-    local ok, svc = pcall(function() return game:GetService("VoiceChatService") end)
-    VoiceChatService = ok and svc or nil
-end
-
 if not (TAB and LocalPlayer) then return end
+
+-- Global cleanup for ShiftRun so re-execute is safe
+_G.ExHubUtil = _G.ExHubUtil or {}
+if _G.ExHubUtil.ShiftRun and typeof(_G.ExHubUtil.ShiftRun.Cleanup) == "function" then
+    pcall(_G.ExHubUtil.ShiftRun.Cleanup)
+end
 
 -- Forward declare row Fly utk sync UI dari logic
 local rowFly
@@ -56,7 +56,7 @@ local function setHorizontalPlaygame(enabled)
             or  Enum.ScreenOrientation.Sensor
     end)
     if not ok then
-        warn("[AxaUtil] Gagal set ScreenOrientation:", err)
+        warn("[ExUtil] Failed to set ScreenOrientation:", err)
     end
 end
 
@@ -270,6 +270,36 @@ end
 
 if LocalPlayer.Character then SR_attachCharacter(LocalPlayer.Character) end
 LocalPlayer.CharacterAdded:Connect(SR_attachCharacter)
+
+-- Register global cleanup so next execute can fully reset ShiftRun
+_G.ExHubUtil.ShiftRun = {
+    Cleanup = function()
+        SR_sprintEnabled = false
+        SR_Running = false
+        if SR_HeartbeatConn then
+            SR_HeartbeatConn:Disconnect()
+            SR_HeartbeatConn = nil
+        end
+        pcall(function()
+            ContextActionService:UnbindAction(SR_ACTION_NAME)
+        end)
+        if SR_RAnimation and SR_RAnimation.IsPlaying then
+            pcall(function() SR_RAnimation:Stop() end)
+        end
+        if SR_Humanoid then
+            SR_Humanoid.WalkSpeed = SR_NormalSpeed
+        end
+        if SR_TweenRun then
+            pcall(function() SR_TweenRun:Cancel() end)
+        end
+        if SR_TweenWalk then
+            pcall(function() SR_TweenWalk:Cancel() end)
+        end
+        if camera then
+            camera.FieldOfView = SR_NormalFOV
+        end
+    end
+}
 
 ------------------- INFINITE JUMP -------------------
 local IJ_Settings = {
@@ -508,23 +538,23 @@ local function Fly_Stop()
     end
     Fly_WithNoClip = false
 
-    notify("Fly","Fly dimatikan.",3)
+    notify("Fly","Fly disabled.",3)
 end
 
 local function Fly_Start(withNoclip)
     withNoclip = not not withNoclip
 
-    -- Jika sudah aktif & hanya ganti mode (Fly <-> Fly+NoClip)
+    -- If already active & just switching mode (Fly <-> Fly+NoClip)
     if Fly_Active and Fly_WithNoClip ~= withNoclip then
         Fly_WithNoClip = withNoclip
         NC_SetFromFly(withNoclip)
-        notify("Fly", withNoclip and "Mode: Fly + NoClip." or "Mode: Fly (tanpa NoClip).", 3)
+        notify("Fly", withNoclip and "Mode: Fly + NoClip." or "Mode: Fly (no NoClip).", 3)
         return
     elseif Fly_Active and Fly_WithNoClip == withNoclip then
         return
     end
 
-    -- Start baru
+    -- Start new
     Fly_Active     = true
     Fly_WithNoClip = withNoclip
 
@@ -544,13 +574,13 @@ local function Fly_Start(withNoclip)
         if targetRow and targetRow.Get and targetRow.Get() then
             targetRow.SetSilent(false)
         end
-        notify("Fly","Gagal mengaktifkan Fly (character belum siap).",3)
+        notify("Fly","Failed to enable Fly (character not ready).",3)
         return
     end
 
     Fly_Humanoid = hum
 
-    -- Matikan animasi default supaya tidak "lari" di udara
+    -- Disable default animations so it does not "run" in the air
     Fly_AnimateScript = char:FindFirstChild("Animate")
     if Fly_AnimateScript then
         Fly_AnimateScript.Disabled = true
@@ -559,7 +589,7 @@ local function Fly_Start(withNoclip)
         pcall(function() track:AdjustSpeed(0) end)
     end
 
-    -- Disable beberapa state Humanoid
+    -- Disable some Humanoid states
     Fly_DisabledStates = {}
     local statesToDisable = {
         Enum.HumanoidStateType.FallingDown,
@@ -601,7 +631,7 @@ local function Fly_Start(withNoclip)
         NC_SetFromFly(true)
     end
 
-    -- Input (vertikal) – horizontal pakai MoveDirection (WASD / joystick)
+    -- Input (vertical) – horizontal uses MoveDirection (WASD / joystick)
     if not Fly_InputBeganConn then
         Fly_InputBeganConn = UserInputService.InputBegan:Connect(function(input, gpe)
             if gpe or not Fly_Active then return end
@@ -664,8 +694,8 @@ local function Fly_Start(withNoclip)
 
     notify(
         "Fly",
-        withNoclip and "Fly + NoClip AKTIF (WASD / joystick + Space/E naik, Ctrl/Q/C turun)." or
-            "Fly AKTIF (WASD / joystick + Space/E naik, Ctrl/Q/C turun).",
+        withNoclip and "Fly + NoClip ENABLED (WASD / joystick + Space/E up, Ctrl/Q/C down)." or
+            "Fly ENABLED (WASD / joystick + Space/E up, Ctrl/Q/C down).",
         4
     )
 end
@@ -686,8 +716,8 @@ do
     local enabled = false
 
     local FULL_DIRS = {
-        "Utara","Timur Laut","Timur","Tenggara",
-        "Selatan","Barat Daya","Barat","Barat Laut"
+        "North","Northeast","East","Southeast",
+        "South","Southwest","West","Northwest"
     }
 
     local function yawDegFromLook(v)
@@ -697,14 +727,14 @@ do
 
     local function labelForDeg(d)
         d = (d % 360 + 360) % 360
-        if d == 0   then return "U"
-        elseif d == 45  then return "TL"
-        elseif d == 90  then return "T"
-        elseif d == 135 then return "TG"
+        if d == 0   then return "N"
+        elseif d == 45  then return "NE"
+        elseif d == 90  then return "E"
+        elseif d == 135 then return "SE"
         elseif d == 180 then return "S"
-        elseif d == 225 then return "BD"
-        elseif d == 270 then return "B"
-        elseif d == 315 then return "BL" end
+        elseif d == 225 then return "SW"
+        elseif d == 270 then return "W"
+        elseif d == 315 then return "NW" end
     end
 
     local function addTick(parent, x, h)
@@ -779,7 +809,7 @@ do
         tape.Position = UDim2.fromOffset(desired,0)
 
         local idx = math.floor((deg + 22.5) / 45) % 8 + 1
-        headingLabel.Text = ("Arah: %s (%.0f°)"):format(FULL_DIRS[idx], deg)
+        headingLabel.Text = ("Heading: %s (%.0f°)"):format(FULL_DIRS[idx], deg)
     end
 
     local function destroy()
@@ -831,7 +861,7 @@ do
             TextSize = 14,
             TextColor3 = Color3.fromRGB(230,230,230),
             TextXAlignment = Enum.TextXAlignment.Left,
-            Text = "Arah: -"
+            Text = "Heading: -"
         }, container)
 
         centerArrow = ui("TextLabel", {
@@ -891,16 +921,16 @@ do
 end
 
 ------------------- INVISIBLE (NO VISUAL, REAL/FAKE CHARACTER) -------------------
-local Invis_Keybind        = "JJ"    -- tombol keyboard untuk toggle
-local Invis_Transparency   = true   -- fake character transparan (local)
-local Invis_NoClipOn       = false  -- minta NoClip saat Invisible
+local Invis_Keybind        = "JJ"    -- keyboard key for toggle
+local Invis_Transparency   = true   -- fake character transparent (local)
+local Invis_NoClipOn       = false  -- request NoClip when Invisible
 local Invis_IsInvisible    = false
 local Invis_CanToggle      = true
 
 local Invis_RealCharacter  = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Invis_FakeCharacter  = nil
 local Invis_AnchorPart     = nil
-local Invis_PseudoAnchor   = nil    -- root yg diikat ke Anchor
+local Invis_PseudoAnchor   = nil    -- root attached to Anchor
 local Invis_HR_Real        = nil
 local Invis_HR_Fake        = nil
 
@@ -908,7 +938,6 @@ local function Invis_applyFakeTransparency()
     if not Invis_FakeCharacter then return end
     for _, v in pairs(Invis_FakeCharacter:GetDescendants()) do
         if v:IsA("BasePart") then
-            -- NO VISUAL (local): full invisible saat transparan = true
             v.Transparency = Invis_Transparency and 1 or 0
         elseif v:IsA("Decal") or v:IsA("Texture") then
             if Invis_Transparency then
@@ -958,7 +987,6 @@ local function Invis_setupCharacters()
     Invis_RealCharacter.Archivable = true
     Invis_FakeCharacter = Invis_RealCharacter:Clone()
 
-    -- Anchor: jauh di sumbu Z tetapi Y tetap aman (tidak kena kill-plane)
     local realRoot = Invis_RealCharacter:FindFirstChild("HumanoidRootPart")
         or Invis_RealCharacter:FindFirstChild("Torso")
         or Invis_RealCharacter:FindFirstChild("UpperTorso")
@@ -975,7 +1003,6 @@ local function Invis_setupCharacters()
     Invis_AnchorPart.Anchored = true
     Invis_AnchorPart.CanCollide = false
     Invis_AnchorPart.Size = Vector3.new(40, 2, 40)
-    -- Pindah 5000 stud di sumbu Z agar benar2 di luar map tapi tetap aman di Y
     Invis_AnchorPart.CFrame = CFrame.new(basePos + Vector3.new(0, 0, 5000))
     Invis_AnchorPart.Parent = Workspace
 
@@ -1032,7 +1059,6 @@ local function Invis_onRespawn()
 
     Invis_setupCharacters()
 
-    -- Pastikan kamera kembali ke karakter asli (visible)
     local realHum = Invis_RealCharacter:FindFirstChildOfClass("Humanoid")
     if realHum then
         Workspace.CurrentCamera.CameraSubject = realHum
@@ -1041,10 +1067,8 @@ local function Invis_onRespawn()
     Invis_CanToggle = true
 end
 
--- Listener respawn
 LocalPlayer.CharacterAppearanceLoaded:Connect(Invis_onRespawn)
 
--- Anchor handler (selalu jaga karakter yg "disembunyikan" tetap di anchor)
 RunService.RenderStepped:Connect(function()
     if Invis_PseudoAnchor and Invis_AnchorPart then
         Invis_PseudoAnchor.CFrame = Invis_AnchorPart.CFrame * CFrame.new(0, 5, 0)
@@ -1052,7 +1076,6 @@ RunService.RenderStepped:Connect(function()
 end)
 
 local function Invis_updateNoClip()
-    -- NoClip khusus Invisible pakai NC_SetFromInvisible
     if Invis_IsInvisible and Invis_NoClipOn then
         NC_SetFromInvisible(true)
     else
@@ -1081,7 +1104,6 @@ local function Invis_Toggle()
     end
 
     if not Invis_IsInvisible then
-        -- Visible -> Invisible: player pindah pakai FakeCharacter, Real di-anchor jauh
         Invis_syncHumanoidStats(realHum, fakeHum)
 
         local storedCF = realRoot.CFrame
@@ -1101,9 +1123,8 @@ local function Invis_Toggle()
         end
 
         Invis_IsInvisible = true
-        notify("Invisible","Mode: Invisible (No Visual) AKTIF.",3)
+        notify("Invisible","Mode: Invisible (No Visual) ENABLED.",3)
     else
-        -- Invisible -> Visible: balik ke RealCharacter, Fake di-anchor jauh
         Invis_syncHumanoidStats(fakeHum, realHum)
 
         local storedCF = fakeRoot.CFrame
@@ -1123,13 +1144,12 @@ local function Invis_Toggle()
         end
 
         Invis_IsInvisible = false
-        notify("Invisible","Kembali Visible (normal).",3)
+        notify("Invisible","Back to Visible (normal).",3)
     end
 
     Invis_updateNoClip()
 end
 
--- Keybind toggle Invisible (default E)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
@@ -1142,19 +1162,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
-------------------- HELPER: JUMP VIA GUI -------------------
-local function doJump()
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.Jump = true
-    end
-end
-
-------------------- UI TAB UTILITAS (HEADER + SCROLL CHECKBOX) -------------------
+------------------- UI TAB UTILITIES (HEADER + SCROLL CHECKBOX) -------------------
 do
-    -- Header simple di dalam kartu CORE
     ui("TextLabel", {
         Name = "UtilHeader",
         Size = UDim2.new(1,-10,0,22),
@@ -1164,10 +1173,9 @@ do
         TextSize = 15,
         TextXAlignment = Enum.TextXAlignment.Left,
         TextColor3 = Color3.fromRGB(40,40,70),
-        Text = "⚙️ Utilitas V1.3 - Invisible"
+        Text = "⚙️ Utilities V1.3 - Invisible"
     }, TAB)
 
-    -- ScrollingFrame vertikal berisi checkbox checklist
     local scroll = ui("ScrollingFrame", {
         Name = "UtilScroll",
         Position = UDim2.new(0,5,0,30),
@@ -1195,13 +1203,13 @@ do
     local rowHorizontal = createToggleRow(
         scroll,
         "0_HorizontalPlay",
-        "Horizontal Playgame (kunci layar ke landscape)",
+        "Horizontal Playgame (lock screen to landscape)",
         true
     )
     rowHorizontal.OnChanged(function(state)
         setHorizontalPlaygame(state)
         notify("Horizontal Playgame",
-            state and "Orientasi dikunci ke landscape." or "Orientasi kembali auto.",
+            state and "Orientation locked to landscape." or "Orientation back to auto.",
             3
         )
     end)
@@ -1211,7 +1219,6 @@ do
     -- INVISIBLE BLOCK CHECKBOX (3 CHECKBOX)
     ----------------------------------------------------------------
 
-    -- 1) Invisible / Visible (key E, No Visual)
     local rowInvisible = createToggleRow(
         scroll,
         "0a_InvisibleToggle",
@@ -1219,13 +1226,11 @@ do
         false
     )
     rowInvisible.OnChanged(function(state)
-        -- Samakan dengan state Invisible sekarang
         if state ~= Invis_IsInvisible then
             Invis_Toggle()
         end
     end)
 
-    -- 2) Transparent Fake Character (default true)
     local rowTransparentFake = createToggleRow(
         scroll,
         "0b_TransparentFake",
@@ -1237,15 +1242,13 @@ do
         Invis_applyFakeTransparency()
         notify("Invisible","Transparent Fake: "..(state and "ON" or "OFF"),2)
     end)
-    -- apply default
     Invis_Transparency = rowTransparentFake.Get()
     Invis_applyFakeTransparency()
 
-    -- 3) NoClip Fake Character (default false)
     local rowInvisibleNoclip = createToggleRow(
         scroll,
         "0c_InvisNoclip",
-        "NoClip Fake Character (saat Invisible)",
+        "NoClip Fake Character (while Invisible)",
         false
     )
     rowInvisibleNoclip.OnChanged(function(state)
@@ -1255,7 +1258,7 @@ do
     end)
 
     ----------------------------------------------------------------
-    -- Fitur lain seperti sebelumnya
+    -- Other features as before
     ----------------------------------------------------------------
 
     -- Checkbox: ShiftRun
@@ -1269,13 +1272,13 @@ do
         SR_sprintEnabled = state
         SR_setSprintEnabled(state)
         notify("ShiftRun",
-            state and "ShiftRun AKTIF (tahan LeftShift)." or "ShiftRun dimatikan.",
+            state and "ShiftRun ENABLED (hold LeftShift)." or "ShiftRun disabled.",
             3
         )
     end)
 
     ----------------------------------------------------------------
-    -- INPUT BOX: SHIFT RUN SPEED & FOV (DIBAWAH SHIFT RUN)
+    -- INPUT BOX: SHIFT RUN SPEED & FOV (BELOW SHIFT RUN)
     ----------------------------------------------------------------
     local srConfigRow = ui("Frame", {
         Name = "1a_ShiftRunConfig",
@@ -1324,13 +1327,12 @@ do
     }, srConfigRow)
     ui("UICorner", {CornerRadius = UDim.new(0,6)}, fovBox)
 
-    -- TANPA BATAS MAX: hanya minimal 0 utk speed, minimal 1 utk FOV
     speedBox.FocusLost:Connect(function()
         local txt = speedBox.Text
         local num = tonumber(txt)
         if not num then
             speedBox.Text = tostring(SR_RunningSpeed)
-            notify("ShiftRun","Speed harus angka (contoh: 40).",2)
+            notify("ShiftRun","Speed must be a number (e.g. 40).",2)
             return
         end
         if num < 0 then
@@ -1342,7 +1344,7 @@ do
         if SR_Humanoid and SR_sprintEnabled and SR_Running then
             SR_run()
         end
-        notify("ShiftRun","RunningSpeed di-set ke "..tostring(num)..".",2)
+        notify("ShiftRun","RunningSpeed set to "..tostring(num)..".",2)
     end)
 
     fovBox.FocusLost:Connect(function()
@@ -1350,7 +1352,7 @@ do
         local num = tonumber(txt)
         if not num then
             fovBox.Text = tostring(SR_RunFOV)
-            notify("ShiftRun","Run FOV harus angka (contoh: 80).",2)
+            notify("ShiftRun","Run FOV must be a number (e.g. 80).",2)
             return
         end
         if num < 1 then
@@ -1365,27 +1367,27 @@ do
         else
             SR_walk()
         end
-        notify("ShiftRun","Run FOV di-set ke "..tostring(num)..".",2)
+        notify("ShiftRun","Run FOV set to "..tostring(num)..".",2)
     end)
 
     -- Checkbox: Infinite Jump
     local rowInfJump = createToggleRow(
         scroll,
         "2_InfiniteJump",
-        ("Infinite Jump (%d extra jump di udara + pijakan VFX)"):format(IJ_Settings.ExtraJumps),
+        ("Infinite Jump (%d extra mid-air jumps + platform VFX)"):format(IJ_Settings.ExtraJumps),
         false
     )
     rowInfJump.OnChanged(function(state)
         IJ_Enabled = state
         IJ_JumpsDone = 0
         notify("Infinite Jump",
-            state and ("Aktif (%d extra jump)."):format(IJ_Settings.ExtraJumps) or "Dimatikan.",
+            state and ("Enabled (%d extra jumps)."):format(IJ_Settings.ExtraJumps) or "Disabled.",
             3
         )
     end)
 
     ----------------------------------------------------------------
-    -- INPUT BOX: EXTRA JUMPS (DIBAWAH INFINITE JUMP) - TANPA BATAS MAX
+    -- INPUT BOX: EXTRA JUMPS (BELOW INFINITE JUMP)
     ----------------------------------------------------------------
     local ijConfigRow = ui("Frame", {
         Name = "2_InfiniteJumpConfig",
@@ -1401,7 +1403,7 @@ do
         TextSize = 13,
         TextXAlignment = Enum.TextXAlignment.Left,
         TextColor3 = Color3.fromRGB(40,40,70),
-        Text = "Extra Jumps (udara):"
+        Text = "Extra Jumps (air):"
     }, ijConfigRow)
 
     local extraBox = ui("TextBox", {
@@ -1424,10 +1426,10 @@ do
         local num = tonumber(txt)
         if not num then
             extraBox.Text = tostring(IJ_Settings.ExtraJumps)
-            notify("Infinite Jump","ExtraJumps harus angka (contoh: 5).",2)
+            notify("Infinite Jump","ExtraJumps must be a number (e.g. 5).",2)
             return
         end
-        -- TANPA BATAS MAX: hanya paksa minimal 0 dan bulatkan
+
         num = math.floor(num + 0.5)
         if num < 0 then
             num = 0
@@ -1437,22 +1439,21 @@ do
         IJ_JumpsDone = 0
         extraBox.Text = tostring(num)
 
-        -- update label row Infinite Jump
         local lbl = rowInfJump
             and rowInfJump.Frame
             and rowInfJump.Frame:FindFirstChild("Label")
         if lbl and lbl:IsA("TextLabel") then
-            lbl.Text = ("Infinite Jump (%d extra jump di udara + pijakan VFX)"):format(IJ_Settings.ExtraJumps)
+            lbl.Text = ("Infinite Jump (%d extra mid-air jumps + platform VFX)"):format(IJ_Settings.ExtraJumps)
         end
 
-        notify("Infinite Jump","ExtraJumps di-set ke "..tostring(num)..".",2)
+        notify("Infinite Jump","ExtraJumps set to "..tostring(num)..".",2)
     end)
 
-    -- Checkbox: Fly (tanpa NoClip)
+    -- Checkbox: Fly (no NoClip)
     rowFly = createToggleRow(
         scroll,
         "2a_Fly",
-        "Fly (gerak bebas, WASD/joystick + Space/E naik, Ctrl/Q/C turun)",
+        "Fly (free movement, WASD/joystick + Space/E up, Ctrl/Q/C down)",
         false
     )
     rowFly.OnChanged(function(state)
@@ -1472,7 +1473,7 @@ do
     rowFlyNoclip = createToggleRow(
         scroll,
         "2b_FlyNoclip",
-        "Fly + No Clip (terbang & tembus tembok)",
+        "Fly + No Clip (fly and pass through walls)",
         false
     )
     rowFlyNoclip.OnChanged(function(state)
@@ -1494,35 +1495,35 @@ do
     local rowNoclip = createToggleRow(
         scroll,
         "2c_Noclip",
-        "No Clip (tembus tembok, hati-hati ban)",
+        "No Clip (pass through walls, risk of ban)",
         false
     )
     rowNoclip.OnChanged(function(state)
         NC_SetEnabled(state)
         notify(
             "No Clip",
-            state and "No Clip AKTIF (badan tembus, collider dimatikan)." or "No Clip dimatikan, collider dikembalikan.",
+            state and "No Clip ENABLED (no collisions, body passes through)." or "No Clip disabled, collisions restored.",
             3
         )
     end)
 
-    -- Checkbox: Kompas HUD (default ON)
+    -- Checkbox: Compass HUD (default ON)
     local rowCompass = createToggleRow(
         scroll,
         "3_CompassHUD",
-        "Kompas HUD (pita derajat & heading)",
+        "Compass HUD (degree tape & heading)",
         true
     )
     rowCompass.OnChanged(function(state)
         Compass.SetVisible(state)
-        notify("Kompas",
-            state and "Kompas ditampilkan." or "Kompas disembunyikan.",
+        notify("Compass",
+            state and "Compass shown." or "Compass hidden.",
             2
         )
     end)
     Compass.SetVisible(rowCompass.Get())
 
-    -- Baris pilihan posisi kompas (atas/bawah)
+    -- Compass position (top/bottom)
     local posRow = ui("Frame", {
         Name = "3b_CompassPos",
         Size = UDim2.new(1,0,0,30),
@@ -1536,7 +1537,7 @@ do
         TextSize = 13,
         TextXAlignment = Enum.TextXAlignment.Left,
         TextColor3 = Color3.fromRGB(40,40,70),
-        Text = "Posisi Kompas:"
+        Text = "Compass Position:"
     }, posRow)
 
     local function styleBtn(btn, active)
@@ -1549,7 +1550,7 @@ do
         Position = UDim2.new(0,150,0,2),
         Font = Enum.Font.GothamSemibold,
         TextSize = 13,
-        Text = "Atas"
+        Text = "Top"
     }, posRow)
     ui("UICorner", {CornerRadius = UDim.new(0,7)}, btnTop)
 
@@ -1558,7 +1559,7 @@ do
         Position = UDim2.new(0,256,0,2),
         Font = Enum.Font.GothamSemibold,
         TextSize = 13,
-        Text = "Bawah"
+        Text = "Bottom"
     }, posRow)
     ui("UICorner", {CornerRadius = UDim.new(0,7)}, btnBottom)
 
@@ -1569,80 +1570,16 @@ do
     btnTop.MouseButton1Click:Connect(function()
         Compass.SetPositionMode("top")
         styleBtn(btnTop,true); styleBtn(btnBottom,false)
-        notify("Kompas", "Posisi: Atas", 2)
+        notify("Compass", "Position: Top", 2)
     end)
 
     btnBottom.MouseButton1Click:Connect(function()
         Compass.SetPositionMode("bottom")
         styleBtn(btnTop,false); styleBtn(btnBottom,true)
-        notify("Kompas", "Posisi: Bawah", 2)
+        notify("Compass", "Position: Bottom", 2)
     end)
 
-    -- Checkbox: Rejoin Voice
-    local rowRejoinVoice = createToggleRow(
-        scroll,
-        "4_RejoinVoice",
-        "Rejoin Voice Chat (coba sambung ulang)",
-        false
-    )
-    rowRejoinVoice.OnChanged(function(state)
-        if not state then return end
-        if not VoiceChatService then
-            notify("Rejoin Voice","VoiceChatService tidak tersedia di game ini.",4)
-            return
-        end
-        task.spawn(function()
-            local ok, err = pcall(function()
-                VoiceChatService:JoinVoice()
-            end)
-            if ok then
-                notify("Rejoin Voice","Percobaan join voice dikirim.",3)
-            else
-                warn("[AxaUtil] JoinVoice gagal:", err)
-                notify("Rejoin Voice","Gagal join voice: "..tostring(err),4)
-            end
-        end)
-    end)
-
-    -- Checkbox: Jump Button (GUI)
-    local rowJumpBtn = createToggleRow(
-        scroll,
-        "5_JumpButton",
-        "Jump Button (tombol lompat di UI)",
-        false
-    )
-    -- Row ini hanya indikator; tombol real-nya di bawah
-    rowJumpBtn.OnChanged(function() end)
-
-    -- Satu baris button Jump
-    local jumpRow = ui("Frame", {
-        Name = "5b_JumpRow",
-        Size = UDim2.new(1,0,0,30),
-        BackgroundTransparency = 1
-    }, scroll)
-
-    local jumpButton = ui("TextButton", {
-        Name = "JumpButton",
-        Size = UDim2.new(1,0,1,0),
-        BackgroundColor3 = Color3.fromRGB(52,52,64),
-        AutoButtonColor = true,
-        Font = Enum.Font.GothamSemibold,
-        TextSize = 13,
-        TextColor3 = Color3.fromRGB(230,230,240),
-        Text = "Jump"
-    }, jumpRow)
-    ui("UICorner", {CornerRadius = UDim.new(0,8)}, jumpButton)
-    ui("UIStroke", {
-        Thickness = 1,
-        Color = Color3.fromRGB(255,255,255),
-        Transparency = 0.82
-    }, jumpButton)
-
-    jumpButton.MouseButton1Click:Connect(function()
-        doJump()
-    end)
-
-    -- Saat character respawn: matikan Fly & reset checklist Fly, Invisible ikut reset
+    -- On respawn: stop Fly & reset Fly/Invisible checkboxes
     LocalPlayer.CharacterAdded:Connect(function()
         Fly_Stop()
         if rowFly and rowFly.Get() then
@@ -1652,7 +1589,6 @@ do
             rowFlyNoclip.SetSilent(false)
         end
 
-        -- Invisible reset ke Visible di UI
         if rowInvisible and rowInvisible.Get() then
             rowInvisible.SetSilent(false)
         end
@@ -1673,9 +1609,9 @@ do
     pcall(function()
         StarterGui:SetCore("SendNotification", {
             Title    = "ExHub Utility Loaded",
-            Text     = "ShiftRun, Infinite Jump, Kompas, Fly, Invisible (key E) siap.",
+            Text     = "ShiftRun, Infinite Jump, Compass, Fly, Invisible (key JJ) ready.",
             Duration = 5,
-            Button1  = "Oke",
+            Button1  = "OK",
         })
     end)
 end
