@@ -2563,7 +2563,7 @@ local function buildSpawnControlsCard(bodyScroll)
     local spawnCard = createCard(
         bodyScroll,
         "Spawn Notif Controls",
-        "Spawn Notifier settings (Boss, HP Boss, Divine, Secret, Climate) + per fish.",
+        "Spawn Notifier settings (Boss, HP Boss, Divine, Secret, Climate) + by Fish.",
         2,
         460
     )
