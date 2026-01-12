@@ -809,7 +809,7 @@ end
 ------------------- SPAWN BOSS / HP BOSS / CLIMATE WEBHOOK CORE -------------------
 local SPAWN_BOSS_WEBHOOK_URL   = "https://discord.com/api/webhooks/1435079884073341050/vEy2YQrpQQcN7pMs7isWqPtylN_AyJbzCAo_xDqM7enRacbIBp43SG1IR_hH-3j4zrfW"
 local SPAWN_BOSS_BOT_USERNAME  = "Spawn Boss Notifier"
-local SPAWN_BOSS_BOT_AVATAR    = "https://ibb.co.com/x8C6FF74g"
+local SPAWN_BOSS_BOT_AVATAR    = "https://i.postimg.cc/tRVDMbPy/Ex-Logo2.png"
 local DEFAULT_OWNER_DISCORD    = "<@1403052152691101857>"
 
 local HP_BOSS_WEBHOOK_URL      = "https://discord.com/api/webhooks/1456150372686237849/NTDxNaXWeJ1ytvzTo9vnmG5Qvbl6gsvZor4MMb9rWUwKT4fFkRQ9NbNiPsy7-TWogTmR"
