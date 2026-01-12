@@ -1,5 +1,5 @@
 --==========================================================
---  4ExTab_SpearFishFarm.lua
+--  4AxaTab_SpearFishFarm.lua
 --  TAB 4: "Spear Fish Farm PRO++"
 --==========================================================
 
@@ -49,7 +49,7 @@ local autoFarmBoss     = true   -- Boss di WorldBoss
 local autoFarmRare     = false  -- Mythic/Legendary/Secret Sea4, Sea5, Sea8, Sea9
 local autoFarmIllahi   = false  -- Illahi Sea6, Sea7, Sea8, Sea10
 
--- Fire First
+-- Fire First (toggle dihapus dari UI, tetap aktif di logic)
 local fireFirstEnabled   = true
 local fireChargeEnabled  = true
 
@@ -88,20 +88,6 @@ local NEAR_REMAIN_THRESHOLD     = 240
 local MIN_NEAR_REMAIN           = 180
 local AUTOTP_CHEST_FALLBACK     = 7   -- detik
 
--- ServerHoop flags + data
-local serverHoopPrivEnabled   = false
-local serverHoopPub13Enabled  = false
-local serverHoopPub4pEnabled  = false
-local lastBossAliveForHoop    = false
-
-local SERVER_HOOP_IDS = {
-    "db18524c-8cd2-4ac7-9a68-741b4dc42d87",
-    "344e89e4-3d29-4dd8-98cb-c0bec429f697",
-    "67d48363-7348-47e7-b9e0-56e11ca76bd4",
-    "f91e05c5-afe6-4eda-8edf-e53d010f3729",
-    "e237131b-a28a-4ade-a3c5-b4e1f487c5e3",
-}
-
 -- Sea mode (Sea6 & Sea7 gabung)
 local seaModeList = {
     "AutoDetect",
@@ -125,6 +111,31 @@ local rarityModeList = {
 }
 local rarityModeIndex = 1
 
+-- Mapping nama lokasi untuk UI (tidak lagi tampil "Sea1-10")
+local SEA_UI_NAME_MAP = {
+    Sea1   = "Beginner River",
+    Sea2   = "Rushing Stream",
+    Sea3   = "Island Center Lake",
+    Sea4   = "Submerged Pond",
+    Sea5   = "Island Soul Sea (Nether Island)",
+    Sea6   = "Island Soul Sea Air (Nether Island)",
+    Sea7   = "Island Soul Sea Floating (Nether Island)",
+    Sea6_7 = "Island Soul Sea Air+Floating (Nether Island)",
+    Sea8   = "Wrecks Sea - Lower Layers (Under Water)",
+    Sea9   = "Wrecks Sea - Mid Layers (Under Water)",
+    Sea10  = "Wrecks Sea - Upper Layers (Under Water)",
+}
+
+local function getSeaDisplayNameForUi(seaCode)
+    if not seaCode or seaCode == "" then
+        return "-"
+    end
+    if seaCode == "Sea6&Sea7" or seaCode == "Sea6_7" then
+        return SEA_UI_NAME_MAP["Sea6_7"]
+    end
+    return SEA_UI_NAME_MAP[seaCode] or seaCode
+end
+
 -- AimLock + ESP Antena
 local aimLockEnabled    = true
 local espAntennaEnabled = true
@@ -139,7 +150,7 @@ local FARM_DELAY_MIN  = 0.00
 local FARM_DELAY_MAX  = 0.30
 local farmDelay       = 0.00
 
--- Status label UI
+-- Status label UI (teks deskripsi status dikosongkan agar UI bersih)
 local statusLabel
 
 -- Boss target
@@ -838,10 +849,10 @@ local function detectCurrentSea()
 
             for _, entry in ipairs(entries) do
                 local seaFolder = entry.folder
-                local ok, descendants = pcall(function()
+                local okDesc, descendants = pcall(function()
                     return seaFolder:GetDescendants()
                 end)
-                if ok and descendants then
+                if okDesc and descendants then
                     for _, inst in ipairs(descendants) do
                         if inst:IsA("BasePart") then
                             sum = sum + inst.Position
@@ -1215,7 +1226,7 @@ local function getRegionForBossPart(part)
     return nil
 end
 
--- Teleport Boss Poin via WorldFp -> Teleport -> Boss Point (smooth)
+-- Teleport Boss Point via WorldFp -> Teleport -> Boss Point (smooth)
 local function teleportToBossPoint(pointName)
     local destPos, destLook
     if pointName == "Point1" then
@@ -1380,10 +1391,6 @@ local function autoTeleportBossCheck()
             else
                 if pendingTeleportCreatedAt and (os.clock() - pendingTeleportCreatedAt) > AUTOTP_CHEST_FALLBACK then
                     if chestActivityFlag then
-                        -- Fallback: waktu tunggu habis tetapi masih ada aktivitas Chest.
-                        -- Jangan langsung teleport. Matikan timer dan tunggu sampai
-                        -- Chest benar-benar selesai + kembali ke Last Location
-                        -- yang akan memicu chestJustFinishedFlag.
                         pendingTeleportCreatedAt = nil
                         notify(
                             "Spear Fish Farm",
@@ -1393,8 +1400,6 @@ local function autoTeleportBossCheck()
                             5
                         )
                     else
-                        -- Tidak ada aktivitas Chest (deteksi gagal / Chest tidak ada)
-                        -- Jalankan fallback seperti sebelumnya.
                         local dest = pendingTeleportTarget
                         local mode = pendingTeleportMode
 
@@ -1800,127 +1805,6 @@ local function processAutoFarmBossStep()
     task.wait(farmDelay)
 end
 
-------------------- SERVER HOOP HELPERS -------------------
-local function fetchPublicServers(placeId, maxPages)
-    maxPages = math.max(1, math.floor(maxPages or 3))
-    if not HttpService then
-        return {}
-    end
-
-    local allServers = {}
-    local cursor = nil
-
-    for _ = 1, maxPages do
-        local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100%s")
-            :format(placeId, cursor and ("&cursor=" .. HttpService:UrlEncode(cursor)) or "")
-
-        local okBody, body = pcall(function()
-            return game:HttpGet(url)
-        end)
-        if not okBody or not body or body == "" then
-            break
-        end
-
-        local okDecode, data = pcall(function()
-            return HttpService:JSONDecode(body)
-        end)
-        if not okDecode or type(data) ~= "table" or type(data.data) ~= "table" then
-            break
-        end
-
-        for _, s in ipairs(data.data) do
-            table.insert(allServers, s)
-        end
-
-        cursor = data.nextPageCursor
-        if not cursor then
-            break
-        end
-    end
-
-    return allServers
-end
-
-local function teleportRandomHoopServer()
-    local placeId      = game.PlaceId
-    local currentJobId = game.JobId
-
-    local choices = {}
-    for _, id in ipairs(SERVER_HOOP_IDS) do
-        if id ~= currentJobId then
-            table.insert(choices, id)
-        end
-    end
-    if #choices == 0 then
-        choices = SERVER_HOOP_IDS
-    end
-    if #choices == 0 then
-        return
-    end
-
-    local targetJob  = choices[math.random(1, #choices)]
-    notify("Spear Fish Farm", "Boss mati, ServerHoop Priv pindah ke server private...", 4)
-
-    pcall(function()
-        TeleportService:TeleportToPlaceInstance(placeId, targetJob, LocalPlayer)
-    end)
-end
-
-local function teleportRandomPublicServer()
-    local placeId      = game.PlaceId
-    local currentJobId = tostring(game.JobId)
-
-    local okFetch, servers = pcall(function()
-        return fetchPublicServers(placeId, 3)
-    end)
-
-    local candidates = {}
-    if okFetch and type(servers) == "table" then
-        for _, s in ipairs(servers) do
-            local id         = s.id
-            local playing    = tonumber(s.playing) or 0
-            local maxPlayers = tonumber(s.maxPlayers) or 0
-            if id and id ~= currentJobId and maxPlayers > 0 and playing < maxPlayers then
-                table.insert(candidates, id)
-            end
-        end
-    end
-
-    if #candidates == 0 then
-        notify("Spear Fish Farm", "ServerHoop Pub: tidak menemukan server lain (API), fallback Teleport random.", 3)
-        pcall(function()
-            TeleportService:Teleport(placeId, LocalPlayer)
-        end)
-        return
-    end
-
-    local targetJob = candidates[math.random(1, #candidates)]
-    notify("Spear Fish Farm", "Boss mati, ServerHoop Pub pindah ke server publik lain...", 4)
-
-    pcall(function()
-        TeleportService:TeleportToPlaceInstance(placeId, targetJob, LocalPlayer)
-    end)
-end
-
-local function serverHoopCheck()
-    local nowAlive = isBossAlive()
-    if lastBossAliveForHoop and not nowAlive then
-        if serverHoopPrivEnabled then
-            teleportRandomHoopServer()
-        else
-            local playerCount = #Players:GetPlayers()
-            if serverHoopPub13Enabled and playerCount >= 1 and playerCount <= 3 then
-                notify("Spear Fish Farm", "Boss mati, ServerHoop Pub 1-3 pindah server publik...", 4)
-                teleportRandomPublicServer()
-            elseif serverHoopPub4pEnabled and playerCount > 3 then
-                notify("Spear Fish Farm", "Boss mati, ServerHoop Pub 4+ pindah server publik...", 4)
-                teleportRandomPublicServer()
-            end
-        end
-    end
-    lastBossAliveForHoop = nowAlive
-end
-
 ------------------- UI HELPERS -------------------
 local function createMainLayout()
     local header = Instance.new("Frame")
@@ -1951,7 +1835,7 @@ local function createMainLayout()
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
     title.Position = UDim2.new(0, 14, 0, 4)
     title.Size = UDim2.new(1, -28, 0, 20)
-    title.Text = "Spear Fish Farm V1.3"
+    title.Text = "Spear Fish Farm V1.4"
 
     local subtitle = Instance.new("TextLabel")
     subtitle.Name = "Subtitle"
@@ -2219,32 +2103,8 @@ local function updateStatusLabel()
     if not statusLabel then
         return
     end
-
-    local rawSeaMode = seaModeList[seaModeIndex] or "AutoDetect"
-    local seaModeText = (rawSeaMode == "Sea6_7") and "Sea6&Sea7" or rawSeaMode
-    local rarityModeTxt = rarityModeList[rarityModeIndex] or "Disabled"
-
-    statusLabel.Text = string.format(
-        "Status: AutoFarm %s, Boss %s, Rare %s, Illahi %s, FireFirst %s, Chest %s, LastLoc %s, AutoTP P1 %s, AutoTP P2 %s, HoopPriv %s, HoopPub1-3 %s, HoopPub4+ %s, SeaMode %s, Rarity %s, AimLock %s, ESP Lines %s, Range %.0f stud, Delay %.3fs.",
-        autoFarmAll and "ON" or "OFF",
-        autoFarmBoss and "ON" or "OFF",
-        autoFarmRare and "ON" or "OFF",
-        autoFarmIllahi and "ON" or "OFF",
-        fireFirstEnabled and "ON" or "OFF",
-        autoChestEnabled and "ON" or "OFF",
-        chestReturnEnabled and "ON" or "OFF",
-        autoTpPoint1Enabled and "ON" or "OFF",
-        autoTpPoint2Enabled and "ON" or "OFF",
-        serverHoopPrivEnabled and "ON" or "OFF",
-        serverHoopPub13Enabled and "ON" or "OFF",
-        serverHoopPub4pEnabled and "ON" or "OFF",
-        seaModeText,
-        rarityModeTxt,
-        aimLockEnabled and "ON" or "OFF",
-        espAntennaEnabled and "ON" or "OFF",
-        shootRange,
-        farmDelay
-    )
+    -- Kosongkan teks status agar UI bersih (tanpa deskripsi panjang)
+    statusLabel.Text = ""
 end
 
 ------------------- CLIMATE + PER FISH UI SYNC -------------------
@@ -2297,7 +2157,7 @@ local function getPerFishCandidates()
     if uiMode == "Sea6_7" then
         allowedSeas["Sea6"] = true
         allowedSeas["Sea7"] = true
-        seaText = "Sea6&Sea7"
+        seaText = "Sea6_7"
     elseif uiMode == "Sea4" or uiMode == "Sea5" or uiMode == "Sea6" or uiMode == "Sea7" or uiMode == "Sea8" or uiMode == "Sea9" or uiMode == "Sea10" then
         allowedSeas[uiMode] = true
         seaText = uiMode
@@ -2375,9 +2235,9 @@ local function refreshPerFishButtons(force)
     end
 
     if perFishInfoLabel then
-        local seaText     = seaName or "Unknown"
-        local climateText = climateTag or "All"
-        perFishInfoLabel.Text = string.format("Per Fish (Sea: %s, Climate: %s) – %d opsi.", seaText, climateText, #configs)
+        local locationText = getSeaDisplayNameForUi(seaName or "") or "Unknown"
+        local climateText  = climateTag or "All"
+        perFishInfoLabel.Text = string.format("Per Fish (Location: %s, Climate: %s) – %d opsi.", locationText, climateText, #configs)
     end
 
     for _, cfg in ipairs(configs) do
@@ -2395,7 +2255,7 @@ local function buildAutoFarmCard(bodyScroll)
     local card = createCard(
         bodyScroll,
         "Auto Farm - Spear Fishing",
-        "Prioritas Boss + Rare + Illahi (Nether + Under Water). AimLock fish + ESP.",
+        "Priority Boss + Rare + Divine (Nether + Under Water). AimLock fish + ESP.",
         1,
         580
     )
@@ -2405,8 +2265,9 @@ local function buildAutoFarmCard(bodyScroll)
     scroll.Parent = card
     scroll.BackgroundTransparency = 1
     scroll.BorderSizePixel = 0
-    scroll.Position = UDim2.new(0, 0, 0, 40)
-    scroll.Size = UDim2.new(1, 0, 1, -40)
+    -- Digeser sedikit ke bawah supaya deskripsi tidak tertimpa
+    scroll.Position = UDim2.new(0, 0, 0, 48)
+    scroll.Size = UDim2.new(1, 0, 1, -48)
     scroll.ScrollBarThickness = 4
     scroll.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
     scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -2421,14 +2282,14 @@ local function buildAutoFarmCard(bodyScroll)
         scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 8)
     end))
 
-    local autoFarmAllButton    = createToggleButton(scroll, "AutoFarm Universal (All Sea)", autoFarmAll)
-    local autoFarmBossButton   = createToggleButton(scroll, "AutoFarm Boss (WorldBoss)", autoFarmBoss)
+    local autoFarmAllButton    = createToggleButton(scroll, "AutoFarm Universal", autoFarmAll)
+    local autoFarmBossButton   = createToggleButton(scroll, "AutoFarm Boss", autoFarmBoss)
     local autoFarmRareButton   = createToggleButton(scroll, "AutoFarm Mythic/Legendary/Secret", autoFarmRare)
     local autoFarmIllahiButton = createToggleButton(scroll, "AutoFarm Illahi/Divine", autoFarmIllahi)
 
-    local fireFirstButton      = createToggleButton(scroll, "Fire First (sebelum Hit)", fireFirstEnabled)
-    local aimLockButton        = createToggleButton(scroll, "AimLock Fish Mode", aimLockEnabled)
-    local espAntennaButton     = createToggleButton(scroll, "ESP Lines FIsh", espAntennaEnabled)
+    -- Toggle Fire First dihapus dari UI, tetapi logic tetap aktif
+    local aimLockButton        = createToggleButton(scroll, "AimLock Fish", aimLockEnabled)
+    local espAntennaButton     = createToggleButton(scroll, "ESP Lines Fish", espAntennaEnabled)
 
     local seaModeButton = Instance.new("TextButton")
     seaModeButton.Name = "SeaModeButton"
@@ -2450,21 +2311,9 @@ local function buildAutoFarmCard(bodyScroll)
         local mode = seaModeList[seaModeIndex] or "AutoDetect"
         local desc
         if mode == "AutoDetect" then
-            desc = "AutoDetect Sea (pilih otomatis)"
-        elseif mode == "Sea4" then
-            desc = "Sea4: Submerged Pond"
-        elseif mode == "Sea5" then
-            desc = "Sea5: Nether Island"
-        elseif mode == "Sea6_7" then
-            desc = "Sea6 & Sea7: Nether Island (Illahi/Divine)"
-        elseif mode == "Sea8" then
-            desc = "Sea8: Under Water - Wrecks Sea (Lower Layer)"
-        elseif mode == "Sea9" then
-            desc = "Sea9: Under Water - Wrecks Sea (Mid Layer)"
-        elseif mode == "Sea10" then
-            desc = "Sea10: Under Water - Wrecks Sea (Upper Layer)"
+            desc = "Auto Detect Location"
         else
-            desc = mode
+            desc = getSeaDisplayNameForUi(mode)
         end
         seaModeButton.Text = "Sea Mode: " .. desc
     end
@@ -2492,7 +2341,7 @@ local function buildAutoFarmCard(bodyScroll)
         elseif rarityModeIndex == 2 then
             rarityModeButton.Text = "Rarity Mode: Legendary/Mythic/Secret/Illahi"
         else
-            rarityModeButton.Text = "Rarity Mode: Per Fish (dinamis Sea + Climate + Under Water)"
+            rarityModeButton.Text = "Rarity Mode: by Fish"
         end
     end
     updateRarityModeButtonText()
@@ -2516,7 +2365,7 @@ local function buildAutoFarmCard(bodyScroll)
     perFishLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
     perFishLabel.TextXAlignment = Enum.TextXAlignment.Left
     perFishLabel.Size = UDim2.new(1, 0, 0, 18)
-    perFishLabel.Text = "Per Fish Selection (Sea4/Sea5/Sea6/Sea7/Sea8/Sea9/Sea10, sinkron Sea + Climate):"
+    perFishLabel.Text = "Per Fish Selection:"
 
     perFishContainer = Instance.new("Frame")
     perFishContainer.Name = "PerFishContainer"
@@ -2542,7 +2391,7 @@ local function buildAutoFarmCard(bodyScroll)
     perFishInfoLabel.TextXAlignment = Enum.TextXAlignment.Left
     perFishInfoLabel.TextWrapped = true
     perFishInfoLabel.Size = UDim2.new(1, 0, 0, 30)
-    perFishInfoLabel.Text = "Per Fish (Sea: -, Climate: -)."
+    perFishInfoLabel.Text = "Per Fish (Location: -, Climate: -)."
 
     statusLabel = Instance.new("TextLabel")
     statusLabel.Name = "StatusLabel"
@@ -2561,13 +2410,13 @@ local function buildAutoFarmCard(bodyScroll)
 
     table.insert(connections, autoFarmAllButton.MouseButton1Click:Connect(function()
         autoFarmAll = not autoFarmAll
-        setToggleButtonState(autoFarmAllButton, "AutoFarm Universal (Sea1 - Sea10)", autoFarmAll)
+        setToggleButtonState(autoFarmAllButton, "AutoFarm Universal", autoFarmAll)
         updateStatusLabel()
         notify("Spear Fish Farm", "AutoFarm Universal: " .. (autoFarmAll and "ON" or "OFF"), 2)
     end))
     table.insert(connections, autoFarmBossButton.MouseButton1Click:Connect(function()
         autoFarmBoss = not autoFarmBoss
-        setToggleButtonState(autoFarmBossButton, "AutoFarm Boss (WorldBoss)", autoFarmBoss)
+        setToggleButtonState(autoFarmBossButton, "AutoFarm Boss", autoFarmBoss)
         updateStatusLabel()
         notify("Spear Fish Farm", "AutoFarm Boss: " .. (autoFarmBoss and "ON" or "OFF"), 2)
     end))
@@ -2584,18 +2433,11 @@ local function buildAutoFarmCard(bodyScroll)
         notify("Spear Fish Farm", "AutoFarm Illahi: " .. (autoFarmIllahi and "ON" or "OFF"), 2)
     end))
 
-    table.insert(connections, fireFirstButton.MouseButton1Click:Connect(function()
-        fireFirstEnabled = not fireFirstEnabled
-        setToggleButtonState(fireFirstButton, "Fire First (sebelum Hit)", fireFirstEnabled)
-        updateStatusLabel()
-        notify("Spear Fish Farm", "Fire First: " .. (fireFirstEnabled and "ON" or "OFF"), 2)
-    end))
-
     table.insert(connections, aimLockButton.MouseButton1Click:Connect(function()
         aimLockEnabled = not aimLockEnabled
-        setToggleButtonState(aimLockButton, "AimLock Fish Mode", aimLockEnabled)
+        setToggleButtonState(aimLockButton, "AimLock Fish", aimLockEnabled)
         updateStatusLabel()
-        notify("Spear Fish Farm", "AimLock Mode: " .. (aimLockEnabled and "ON" or "OFF"), 2)
+        notify("Spear Fish Farm", "AimLock: " .. (aimLockEnabled and "ON" or "OFF"), 2)
     end))
     table.insert(connections, espAntennaButton.MouseButton1Click:Connect(function()
         espAntennaEnabled = not espAntennaEnabled
@@ -2620,12 +2462,12 @@ local function buildAutoFarmCard(bodyScroll)
     end))
 end
 
-------------------- BUILD UI CARD: CHEST FARM + SERVER HOOP + AUTOTP -------------------
+------------------- BUILD UI CARD: CHEST FARM + AUTOTP -------------------
 local function buildChestFarmCard(bodyScroll)
     local card = createCard(
         bodyScroll,
         "Chest Farm",
-        "Auto teleport smooth ke Chest, kembali ke posisi awal setelah Chest habis, AutoTP Boss Point1/Point2, dan ServerHoop.",
+        "Auto teleport smooth ke Chest dan kembali ke posisi awal setelah Chest habis. AutoTP Boss antar lokasi.",
         2,
         300
     )
@@ -2635,8 +2477,9 @@ local function buildChestFarmCard(bodyScroll)
     container.Parent = card
     container.BackgroundTransparency = 1
     container.BorderSizePixel = 0
-    container.Position = UDim2.new(0, 0, 0, 40)
-    container.Size = UDim2.new(1, 0, 1, -40)
+    -- Digeser supaya subtitle tidak tertimpa
+    container.Position = UDim2.new(0, 0, 0, 48)
+    container.Size = UDim2.new(1, 0, 1, -48)
 
     local layout = Instance.new("UIListLayout")
     layout.Parent = container
@@ -2644,17 +2487,14 @@ local function buildChestFarmCard(bodyScroll)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Padding = UDim.new(0, 6)
 
-    local autoChestButton      = createToggleButton(container, "Auto Chest (Teleport ke Chest)", autoChestEnabled)
+    local autoChestButton      = createToggleButton(container, "Auto Chest", autoChestEnabled)
     local lastLocButton        = createToggleButton(container, "Last Location (Kembali ke posisi awal)", chestReturnEnabled)
-    local autoTpPoint1Button   = createToggleButton(container, "AutoTP Boss01 & Boss02 (Point1)", autoTpPoint1Enabled)
-    local autoTpPoint2Button   = createToggleButton(container, "AutoTP Boss03 (Point2)", autoTpPoint2Enabled)
-    local serverHoopPrivButton = createToggleButton(container, "ServerHoop Priv (JobId List)", serverHoopPrivEnabled)
-    local serverHoopPub13Button= createToggleButton(container, "ServerHoop Pub 1-3 (NumPlayers 1-3)", serverHoopPub13Enabled)
-    local serverHoopPub4pButton= createToggleButton(container, "ServerHoop Pub 4+ (NumPlayers >3)", serverHoopPub4pEnabled)
+    local autoTpPoint1Button   = createToggleButton(container, "AutoTP Boss01 & Boss02", autoTpPoint1Enabled)
+    local autoTpPoint2Button   = createToggleButton(container, "AutoTP Boss03", autoTpPoint2Enabled)
 
     table.insert(connections, autoChestButton.MouseButton1Click:Connect(function()
         autoChestEnabled = not autoChestEnabled
-        setToggleButtonState(autoChestButton, "Auto Chest (Teleport ke Chest)", autoChestEnabled)
+        setToggleButtonState(autoChestButton, "Auto Chest", autoChestEnabled)
         if not autoChestEnabled then
             chestCurrentTargetPart = nil
             lastLocationCFrame     = nil
@@ -2678,7 +2518,7 @@ local function buildChestFarmCard(bodyScroll)
 
     table.insert(connections, autoTpPoint1Button.MouseButton1Click:Connect(function()
         autoTpPoint1Enabled = not autoTpPoint1Enabled
-        setToggleButtonState(autoTpPoint1Button, "AutoTP Boss01 & Boss02 (Point1)", autoTpPoint1Enabled)
+        setToggleButtonState(autoTpPoint1Button, "AutoTP Boss01 & Boss02", autoTpPoint1Enabled)
         if not autoTpPoint1Enabled then
             tp1CycleState = 0
         end
@@ -2688,33 +2528,12 @@ local function buildChestFarmCard(bodyScroll)
 
     table.insert(connections, autoTpPoint2Button.MouseButton1Click:Connect(function()
         autoTpPoint2Enabled = not autoTpPoint2Enabled
-        setToggleButtonState(autoTpPoint2Button, "AutoTP Boss03 (Point2)", autoTpPoint2Enabled)
+        setToggleButtonState(autoTpPoint2Button, "AutoTP Boss03", autoTpPoint2Enabled)
         if not autoTpPoint2Enabled then
             tp2CycleState = 0
         end
         updateStatusLabel()
         notify("Spear Fish Farm", "AutoTP Boss03: " .. (autoTpPoint2Enabled and "ON" or "OFF"), 2)
-    end))
-
-    table.insert(connections, serverHoopPrivButton.MouseButton1Click:Connect(function()
-        serverHoopPrivEnabled = not serverHoopPrivEnabled
-        setToggleButtonState(serverHoopPrivButton, "ServerHoop Priv (JobId List)", serverHoopPrivEnabled)
-        updateStatusLabel()
-        notify("Spear Fish Farm", "ServerHoop Priv: " .. (serverHoopPrivEnabled and "ON" or "OFF"), 2)
-    end))
-
-    table.insert(connections, serverHoopPub13Button.MouseButton1Click:Connect(function()
-        serverHoopPub13Enabled = not serverHoopPub13Enabled
-        setToggleButtonState(serverHoopPub13Button, "ServerHoop Pub 1-3 (NumPlayers 1-3)", serverHoopPub13Enabled)
-        updateStatusLabel()
-        notify("Spear Fish Farm", "ServerHoop Pub 1-3: " .. (serverHoopPub13Enabled and "ON" or "OFF"), 2)
-    end))
-
-    table.insert(connections, serverHoopPub4pButton.MouseButton1Click:Connect(function()
-        serverHoopPub4pEnabled = not serverHoopPub4pEnabled
-        setToggleButtonState(serverHoopPub4pButton, "ServerHoop Pub 4+ (NumPlayers >3)", serverHoopPub4pEnabled)
-        updateStatusLabel()
-        notify("Spear Fish Farm", "ServerHoop Pub 4+: " .. (serverHoopPub4pEnabled and "ON" or "OFF"), 2)
     end))
 end
 
@@ -2831,14 +2650,6 @@ task.spawn(function()
     end
 end)
 
-task.spawn(function()
-    while alive do
-        local ok, err = pcall(serverHoopCheck)
-        if not ok then warn("[SpearFishFarm] ServerHoop error:", err) end
-        task.wait(0.3)
-    end
-end)
-
 ------------------- TAB CLEANUP -------------------
 _G.AxaHub.TabCleanup[tabId] = function()
     alive = false
@@ -2869,11 +2680,6 @@ _G.AxaHub.TabCleanup[tabId] = function()
     pendingTeleportMode    = nil
     tp1CycleState          = 0
     tp2CycleState          = 0
-
-    serverHoopPrivEnabled  = false
-    serverHoopPub13Enabled = false
-    serverHoopPub4pEnabled = false
-    lastBossAliveForHoop   = false
 
     currentFishTarget      = nil
     currentFishTargetSea   = nil
