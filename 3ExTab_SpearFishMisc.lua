@@ -1,5 +1,5 @@
 --==========================================================
---  3ExTab_SpearFishNotif.lua
+--  3ExTab_SpearFishMisc.lua
 --  TAB 3: "Spear Fishing PRO++"
 --==========================================================
 
@@ -615,7 +615,7 @@ local function createMainLayout()
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
     title.Position = UDim2.new(0, 14, 0, 4)
     title.Size = UDim2.new(1, -28, 0, 20)
-    title.Text = "Spear Fish V1.3"
+    title.Text = "Spear Fish Misc V1.3"
 
     local subtitle = Instance.new("TextLabel")
     subtitle.Name = "Subtitle"
@@ -860,7 +860,7 @@ local function sendWebhookGeneric(url, username, avatar, embed)
     local payload = {
         username   = username,
         avatar_url = avatar,
-        content    = DEFAULT_OWNER_DISCORD,
+        --content    = DEFAULT_OWNER_DISCORD,
         embeds     = { embed },
     }
 
@@ -1044,7 +1044,7 @@ local function buildSpawnBossEmbed(region, stageKey, remainSeconds, bossName)
 
     local embed = {
         title       = "Spawn Boss",
-        description = DEFAULT_OWNER_DISCORD,
+        --description = DEFAULT_OWNER_DISCORD,
         color       = colorInt,
         fields      = {
             {
@@ -1112,7 +1112,7 @@ local function buildHpBossEmbed(region, bossName, curHpText, maxHpText, percentT
 
     local description = string.format(
         "%s\nHP %s: %s / %s (%s)",
-        DEFAULT_OWNER_DISCORD,
+        --DEFAULT_OWNER_DISCORD,
         bossName,
         curHpText,
         maxHpText,
@@ -1589,7 +1589,7 @@ local function initIllahiSpawnNotifier()
 
             local embed = {
                 title       = "Spawn Divine",
-                description = DEFAULT_OWNER_DISCORD,
+                --description = DEFAULT_OWNER_DISCORD,
                 color       = 0x9400D3,
                 fields      = {
                     {
@@ -1761,7 +1761,7 @@ local function initSecretSpawnNotifier()
 
             local embed = {
                 title       = "Spawn Secret",
-                description = DEFAULT_OWNER_DISCORD,
+                --description = DEFAULT_OWNER_DISCORD,
                 color       = 0xFFD700,
                 fields      = {
                     {
@@ -2001,7 +2001,7 @@ local function initClimateTimeNotifier()
 
             local embed = {
                 title       = "Climate Time",
-                description = DEFAULT_OWNER_DISCORD,
+                --description = DEFAULT_OWNER_DISCORD,
                 color       = 0x1E90FF,
                 fields      = {
                     {
