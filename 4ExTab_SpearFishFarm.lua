@@ -43,11 +43,36 @@ local WorldSea     = workspace:FindFirstChild("WorldSea")
 local WorldBoss    = workspace:FindFirstChild("WorldBoss")
 local WorldFp      = workspace:FindFirstChild("WorldFp")
 
+--==========================================================
+--  UNLOCK CURSOR (AUTO ON, TANPA TOGGLE/TOMBOL)
+--==========================================================
+local isCursorUnlocked = true
+
+local function forceCursorUnlocked()
+    if not isCursorUnlocked then
+        return
+    end
+
+    if UserInputService.MouseBehavior ~= Enum.MouseBehavior.Default then
+        UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+    end
+
+    if UserInputService.MouseIconEnabled == false then
+        UserInputService.MouseIconEnabled = true
+    end
+end
+
+table.insert(connections, RunService.RenderStepped:Connect(function()
+    if alive then
+        forceCursorUnlocked()
+    end
+end))
+
 -- Auto farm flags
 local autoFarmAll      = true   -- Semua fish sesuai Sea filter
 local autoFarmBoss     = true   -- Boss di WorldBoss
 local autoFarmRare     = false  -- Mythic/Legendary/Secret Sea4, Sea5, Sea8, Sea9
-local autoFarmIllahi   = false  -- Illahi Sea6, Sea7, Sea8, Sea10
+local autoFarmIllahi   = false  -- Divine Sea6, Sea7, Sea8, Sea10
 
 local function isAnyAutoFarmActive()
     return autoFarmAll or autoFarmBoss or autoFarmRare or autoFarmIllahi
@@ -114,7 +139,7 @@ local seaModeIndex = 1
 -- Rarity mode dropdown
 local rarityModeList = {
     "Disabled",
-    "Legendary/Mythic/Secret/Illahi",
+    "Legendary/Mythic/Secret/Divine",
     "By Fish",
 }
 local rarityModeIndex = 1
@@ -166,7 +191,7 @@ local currentBossTarget     = nil
 local currentBossTargetPart = nil
 
 ------------------- FISH DATA SETS -------------------
--- Illahi / Divine Nether Island (Sea6 & Sea7)
+-- Divine Nether Island (Sea6 & Sea7)
 local ILLAHI_NET_SET = {
     Fish400 = true,
     Fish401 = true,
@@ -176,7 +201,7 @@ local ILLAHI_NET_SET = {
     Fish405 = true,
 }
 
--- Illahi / Divine Under Water (Sea8 & Sea10)
+-- Divine Under Water (Sea8 & Sea10)
 local ILLAHI_UW_SET = {
     Fish621 = true,
     Fish620 = true,
@@ -348,71 +373,72 @@ local function resolveBossDisplayName(rawName)
 end
 
 ------------------- PER FISH CONFIG -------------------
+-- Nama UI tanpa prefix "Fishxxx", hanya nama ikan + info
 local PER_FISH_CONFIG = {
-    { id = "Fish55",  sea = "Sea4", climates = {"Grassland"}, name = "Fish55 Purple Jellyfish Legendary (Sea4 / Grassland)" },
-    { id = "Fish56",  sea = "Sea4", climates = {"Grassland"}, name = "Fish56 Prism Jellyfish Legendary (Sea4 / Grassland)" },
-    { id = "Fish57",  sea = "Sea4", climates = {"Grassland"}, name = "Fish57 Prism Crab Legendary (Sea4 / Grassland)" },
-    { id = "Fish98",  sea = "Sea4", climates = {"Grassland"}, name = "Fish98 Shark Mythic (Sea4 / Grassland)" },
-    { id = "Fish305", sea = "Sea4", climates = {"Grassland","Marsh","Iceborne"}, name = "Fish305 Christmas Shark Mythic (Sea4 / All Climate)" },
-    { id = "Fish201", sea = "Sea4", climates = {"Grassland"}, name = "Fish201 Shimmer Puffer Secret (Sea4 / Grassland)" },
+    { id = "Fish55",  sea = "Sea4", climates = {"Grassland"}, name = "Purple Jellyfish Legendary (Sea4 / Grassland)" },
+    { id = "Fish56",  sea = "Sea4", climates = {"Grassland"}, name = "Prism Jellyfish Legendary (Sea4 / Grassland)" },
+    { id = "Fish57",  sea = "Sea4", climates = {"Grassland"}, name = "Prism Crab Legendary (Sea4 / Grassland)" },
+    { id = "Fish98",  sea = "Sea4", climates = {"Grassland"}, name = "Shark Mythic (Sea4 / Grassland)" },
+    { id = "Fish305", sea = "Sea4", climates = {"Grassland","Marsh","Iceborne"}, name = "Christmas Shark Mythic (Sea4 / All Climate)" },
+    { id = "Fish201", sea = "Sea4", climates = {"Grassland"}, name = "Shimmer Puffer Secret (Sea4 / Grassland)" },
 
-    { id = "Fish104", sea = "Sea4", climates = {"Marsh"}, name = "Fish104 Bullfrog Legendary (Sea4 / Marsh)" },
-    { id = "Fish105", sea = "Sea4", climates = {"Marsh"}, name = "Fish105 Poison Dart Frog Mythic (Sea4 / Marsh)" },
-    { id = "Fish102", sea = "Sea4", climates = {"Marsh"}, name = "Fish102 Swamp Crocodile Mythic (Sea4 / Marsh)" },
-    { id = "Fish97",  sea = "Sea4", climates = {"Marsh"}, name = "Fish97 Sawtooth Shark Mythic (Sea4 / Marsh)" },
-    { id = "Fish202", sea = "Sea4", climates = {"Marsh"}, name = "Fish202 Nebula Lantern Carp Secret (Sea4 / Marsh)" },
+    { id = "Fish104", sea = "Sea4", climates = {"Marsh"}, name = "Bullfrog Legendary (Sea4 / Marsh)" },
+    { id = "Fish105", sea = "Sea4", climates = {"Marsh"}, name = "Poison Dart Frog Mythic (Sea4 / Marsh)" },
+    { id = "Fish102", sea = "Sea4", climates = {"Marsh"}, name = "Swamp Crocodile Mythic (Sea4 / Marsh)" },
+    { id = "Fish97",  sea = "Sea4", climates = {"Marsh"}, name = "Sawtooth Shark Mythic (Sea4 / Marsh)" },
+    { id = "Fish202", sea = "Sea4", climates = {"Marsh"}, name = "Nebula Lantern Carp Secret (Sea4 / Marsh)" },
 
-    { id = "Fish121", sea = "Sea4", climates = {"Iceborne"}, name = "Fish121 Dragon Whisker Fish Legendary (Sea4 / Iceborne)" },
-    { id = "Fish123", sea = "Sea4", climates = {"Iceborne"}, name = "Fish123 Leatherback Turtle Mythic (Sea4 / Iceborne)" },
-    { id = "Fish111", sea = "Sea4", climates = {"Iceborne"}, name = "Fish111 Frost Anglerfish Mythic (Sea4 / Iceborne)" },
-    { id = "Fish130", sea = "Sea4", climates = {"Iceborne"}, name = "Fish130 Devil Ray Mythic (Sea4 / Iceborne)" },
-    { id = "Fish203", sea = "Sea4", climates = {"Iceborne"}, name = "Fish203 Shimmer Unicorn Fish Secret (Sea4 / Iceborne)" },
+    { id = "Fish121", sea = "Sea4", climates = {"Iceborne"}, name = "Dragon Whisker Fish Legendary (Sea4 / Iceborne)" },
+    { id = "Fish123", sea = "Sea4", climates = {"Iceborne"}, name = "Leatherback Turtle Mythic (Sea4 / Iceborne)" },
+    { id = "Fish111", sea = "Sea4", climates = {"Iceborne"}, name = "Frost Anglerfish Mythic (Sea4 / Iceborne)" },
+    { id = "Fish130", sea = "Sea4", climates = {"Iceborne"}, name = "Devil Ray Mythic (Sea4 / Iceborne)" },
+    { id = "Fish203", sea = "Sea4", climates = {"Iceborne"}, name = "Shimmer Unicorn Fish Secret (Sea4 / Iceborne)" },
 
-    { id = "Fish500", sea = "Sea5", name = "Fish500 Abyssal Demon Shark Secret (Sea5)" },
-    { id = "Fish501", sea = "Sea5", name = "Fish501 Nighfall Demon Shark Secret (Sea5)" },
-    { id = "Fish503", sea = "Sea5", name = "Fish503 Ancient Gopala Secret (Sea5)" },
-    { id = "Fish504", sea = "Sea5", name = "Fish504 Nighfall Gopala Secret (Sea5)" },
-    { id = "Fish505", sea = "Sea5", name = "Fish505 Sharkster Secret (Sea5)" },
-    { id = "Fish508", sea = "Sea5", name = "Fish508 Mayfly Dragon Secret (Sea5)" },
-    { id = "Fish510", sea = "Sea5", name = "Fish510 Nighfall Sharkster Secret (Sea5)" },
+    { id = "Fish500", sea = "Sea5", name = "Abyssal Demon Shark Secret (Sea5)" },
+    { id = "Fish501", sea = "Sea5", name = "Nighfall Demon Shark Secret (Sea5)" },
+    { id = "Fish503", sea = "Sea5", name = "Ancient Gopala Secret (Sea5)" },
+    { id = "Fish504", sea = "Sea5", name = "Nighfall Gopala Secret (Sea5)" },
+    { id = "Fish505", sea = "Sea5", name = "Sharkster Secret (Sea5)" },
+    { id = "Fish508", sea = "Sea5", name = "Mayfly Dragon Secret (Sea5)" },
+    { id = "Fish510", sea = "Sea5", name = "Nighfall Sharkster Secret (Sea5)" },
 
-    { id = "Fish502", sea = "Sea5", name = "Fish502 Ocean Sunfish Mythic (Sea5)" },
-    { id = "Fish506", sea = "Sea5", name = "Fish506 Squid Mythic (Sea5)" },
-    { id = "Fish507", sea = "Sea5", name = "Fish507 Belthfish Mythic (Sea5)" },
-    { id = "Fish509", sea = "Sea5", name = "Fish509 Cylostome Mythic (Sea5)" },
+    { id = "Fish502", sea = "Sea5", name = "Ocean Sunfish Mythic (Sea5)" },
+    { id = "Fish506", sea = "Sea5", name = "Squid Mythic (Sea5)" },
+    { id = "Fish507", sea = "Sea5", name = "Belthfish Mythic (Sea5)" },
+    { id = "Fish509", sea = "Sea5", name = "Cylostome Mythic (Sea5)" },
 
-    { id = "Fish400", sea = "Sea7", name = "Fish400 Nether Barracuda Illahi (Sea6 & Sea7)" },
-    { id = "Fish401", sea = "Sea7", name = "Fish401 Nether Anglerfish Illahi (Sea6 & Sea7)" },
-    { id = "Fish402", sea = "Sea6", name = "Fish402 Nether Manta Ray Illahi (Sea6 & Sea7)" },
-    { id = "Fish403", sea = "Sea6", name = "Fish403 Nether SwordFish Illahi (Sea6 & Sea7)" },
-    { id = "Fish404", sea = "Sea6", name = "Fish404 Nether Flying Fish Illahi (Sea6 & Sea7)" },
-    { id = "Fish405", sea = "Sea6", name = "Fish405 Diamond Flying Fish Illahi (Sea6 & Sea7)" },
+    { id = "Fish400", sea = "Sea7", name = "Nether Barracuda Divine (Sea6 & Sea7)" },
+    { id = "Fish401", sea = "Sea7", name = "Nether Anglerfish Divine (Sea6 & Sea7)" },
+    { id = "Fish402", sea = "Sea6", name = "Nether Manta Ray Divine (Sea6 & Sea7)" },
+    { id = "Fish403", sea = "Sea6", name = "Nether SwordFish Divine (Sea6 & Sea7)" },
+    { id = "Fish404", sea = "Sea6", name = "Nether Flying Fish Divine (Sea6 & Sea7)" },
+    { id = "Fish405", sea = "Sea6", name = "Diamond Flying Fish Divine (Sea6 & Sea7)" },
 
-    { id = "Fish621", sea = "Sea10", name = "Fish621 Amethyst Ray Illahi (Sea10)" },
-    { id = "Fish620", sea = "Sea10", name = "Fish620 Ray Illahi (Sea10)" },
-    { id = "Fish610", sea = "Sea10", name = "Fish610 Shovelnose Ray Illahi (Sea10)" },
-    { id = "Fish609", sea = "Sea10", name = "Fish609 Greyback Lognose Shark Illahi (Sea10)" },
+    { id = "Fish621", sea = "Sea10", name = "Amethyst Ray Divine (Sea10)" },
+    { id = "Fish620", sea = "Sea10", name = "Ray Divine (Sea10)" },
+    { id = "Fish610", sea = "Sea10", name = "Shovelnose Ray Divine (Sea10)" },
+    { id = "Fish609", sea = "Sea10", name = "Greyback Lognose Shark Divine (Sea10)" },
 
-    { id = "Fish611", sea = "Sea8",  name = "Fish611 Star-Marked Sea Turtle Illahi (Sea8)" },
+    { id = "Fish611", sea = "Sea8",  name = "Star-Marked Sea Turtle Divine (Sea8)" },
 
-    { id = "Fish622", sea = "Sea9", name = "Fish622 Grouper Secret (Sea9)" },
-    { id = "Fish619", sea = "Sea9", name = "Fish619 Golden Arowana Secret (Sea9)" },
-    { id = "Fish618", sea = "Sea9", name = "Fish618 Red Arowana Secret (Sea9)" },
-    { id = "Fish617", sea = "Sea9", name = "Fish617 Jadefin Thin Eel Secret (Sea9)" },
-    { id = "Fish614", sea = "Sea9", name = "Fish614 Azure-Pattern Discus Mythic (Sea9)" },
-    { id = "Fish615", sea = "Sea9", name = "Fish615 Bannerfin Butterflyfish Mythic (Sea9)" },
-    { id = "Fish606", sea = "Sea9", name = "Fish606 Reef Grouper Legendary (Sea9)" },
+    { id = "Fish622", sea = "Sea9", name = "Grouper Secret (Sea9)" },
+    { id = "Fish619", sea = "Sea9", name = "Golden Arowana Secret (Sea9)" },
+    { id = "Fish618", sea = "Sea9", name = "Red Arowana Secret (Sea9)" },
+    { id = "Fish617", sea = "Sea9", name = "Jadefin Thin Eel Secret (Sea9)" },
+    { id = "Fish614", sea = "Sea9", name = "Azure-Pattern Discus Mythic (Sea9)" },
+    { id = "Fish615", sea = "Sea9", name = "Bannerfin Butterflyfish Mythic (Sea9)" },
+    { id = "Fish606", sea = "Sea9", name = "Reef Grouper Legendary (Sea9)" },
 
-    { id = "Fish616", sea = "Sea8", name = "Fish616 Yellowfin Thin Eel Secret (Sea8)" },
-    { id = "Fish608", sea = "Sea8", name = "Fish608 Emerald Flounder Secret (Sea8)" },
-    { id = "Fish607", sea = "Sea8", name = "Fish607 Amethyst Squid Secret (Sea8)" },
-    { id = "Fish605", sea = "Sea8", name = "Fish605 Sproud Seahorse Secret (Sea8)" },
-    { id = "Fish613", sea = "Sea8", name = "Fish613 Crimson-Jade Discus Mythic (Sea8)" },
-    { id = "Fish604", sea = "Sea8", name = "Fish604 Golden Seahorse Mythic (Sea8)" },
-    { id = "Fish603", sea = "Sea8", name = "Fish603 Crimson Arrow Squid Mythic (Sea8)" },
-    { id = "Fish612", sea = "Sea8", name = "Fish612 Golden-Spotted Discus Legendary (Sea8)" },
-    { id = "Fish602", sea = "Sea8", name = "Fish602 Red-Fin Roundbelly Legendary (Sea8)" },
-    { id = "Fish601", sea = "Sea8", name = "Fish601 Abyss Sunfish Legendary (Sea8)" },
+    { id = "Fish616", sea = "Sea8", name = "Yellowfin Thin Eel Secret (Sea8)" },
+    { id = "Fish608", sea = "Sea8", name = "Emerald Flounder Secret (Sea8)" },
+    { id = "Fish607", sea = "Sea8", name = "Amethyst Squid Secret (Sea8)" },
+    { id = "Fish605", sea = "Sea8", name = "Sproud Seahorse Secret (Sea8)" },
+    { id = "Fish613", sea = "Sea8", name = "Crimson-Jade Discus Mythic (Sea8)" },
+    { id = "Fish604", sea = "Sea8", name = "Golden Seahorse Mythic (Sea8)" },
+    { id = "Fish603", sea = "Sea8", name = "Crimson Arrow Squid Mythic (Sea8)" },
+    { id = "Fish612", sea = "Sea8", name = "Golden-Spotted Discus Legendary (Sea8)" },
+    { id = "Fish602", sea = "Sea8", name = "Red-Fin Roundbelly Legendary (Sea8)" },
+    { id = "Fish601", sea = "Sea8", name = "Abyss Sunfish Legendary (Sea8)" },
 }
 
 local PER_FISH_FLAGS = {}
@@ -1843,7 +1869,7 @@ local function createMainLayout()
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
     title.Position = UDim2.new(0, 14, 0, 4)
     title.Size = UDim2.new(1, -28, 0, 20)
-    title.Text = "Spear Fish Farm V1.4"
+    title.Text = "Spear Fish Farm V1.3+"
 
     local subtitle = Instance.new("TextLabel")
     subtitle.Name = "Subtitle"
@@ -1855,7 +1881,7 @@ local function createMainLayout()
     subtitle.TextColor3 = Color3.fromRGB(180, 180, 180)
     subtitle.Position = UDim2.new(0, 14, 0, 22)
     subtitle.Size = UDim2.new(1, -28, 0, 18)
-    subtitle.Text = "Auto Farm + Prioritas Boss + Illahi (Nether + Under Water)."
+    subtitle.Text = "Auto Farm + Boss Priority + Divine (Nether + Under Water)."
 
     local bodyScroll = Instance.new("ScrollingFrame")
     bodyScroll.Name = "BodyScroll"
@@ -2241,7 +2267,7 @@ local function refreshPerFishButtons(force)
     if perFishInfoLabel then
         local locationText = getSeaDisplayNameForUi(seaName or "") or "Unknown"
         local climateText  = climateTag or "All"
-        perFishInfoLabel.Text = string.format("By Fish (Location: %s, Climate: %s) – %d opsi.", locationText, climateText, #configs)
+        perFishInfoLabel.Text = string.format("By Fish (Location: %s, Climate: %s) – %d option.", locationText, climateText, #configs)
     end
 
     for _, cfg in ipairs(configs) do
@@ -2288,7 +2314,7 @@ local function buildAutoFarmCard(bodyScroll)
     local autoFarmAllButton    = createToggleButton(scroll, "AutoFarm Universal", autoFarmAll)
     local autoFarmBossButton   = createToggleButton(scroll, "AutoFarm Boss", autoFarmBoss)
     local autoFarmRareButton   = createToggleButton(scroll, "AutoFarm Mythic/Legendary/Secret", autoFarmRare)
-    local autoFarmIllahiButton = createToggleButton(scroll, "AutoFarm Illahi/Divine", autoFarmIllahi)
+    local autoFarmIllahiButton = createToggleButton(scroll, "AutoFarm Divine", autoFarmIllahi)
 
     -- Toggle Fire First dihapus dari UI, tetapi logic tetap aktif (ikut semua AutoFarm)
     local aimLockButton        = createToggleButton(scroll, "AimLock Fish", aimLockEnabled)
@@ -2342,7 +2368,7 @@ local function buildAutoFarmCard(bodyScroll)
         if rarityModeIndex == 1 then
             rarityModeButton.Text = "Rarity Mode: Disabled (pakai AutoFarm di atas)"
         elseif rarityModeIndex == 2 then
-            rarityModeButton.Text = "Rarity Mode: Legendary/Mythic/Secret/Illahi"
+            rarityModeButton.Text = "Rarity Mode: Legendary/Mythic/Secret/Divine"
         else
             rarityModeButton.Text = "Rarity Mode: by Fish"
         end
@@ -2396,8 +2422,6 @@ local function buildAutoFarmCard(bodyScroll)
     perFishInfoLabel.Size = UDim2.new(1, 0, 0, 30)
     perFishInfoLabel.Text = "By Fish (Location: -, Climate: -)."
 
-    -- Tidak ada statusLabel lagi di bagian bawah, supaya header card bawah rapi dan tidak kosong
-
     updateStatusLabel()
     refreshPerFishButtons(true)
 
@@ -2424,10 +2448,10 @@ local function buildAutoFarmCard(bodyScroll)
     end))
     table.insert(connections, autoFarmIllahiButton.MouseButton1Click:Connect(function()
         autoFarmIllahi = not autoFarmIllahi
-        setToggleButtonState(autoFarmIllahiButton, "AutoFarm Illahi/Divine", autoFarmIllahi)
+        setToggleButtonState(autoFarmIllahiButton, "AutoFarm Divine", autoFarmIllahi)
         updateFireFirstState()
         updateStatusLabel()
-        notify("Spear Fish Farm", "AutoFarm Illahi: " .. (autoFarmIllahi and "ON" or "OFF"), 2)
+        notify("Spear Fish Farm", "AutoFarm Divine: " .. (autoFarmIllahi and "ON" or "OFF"), 2)
     end))
 
     table.insert(connections, aimLockButton.MouseButton1Click:Connect(function()
@@ -2464,7 +2488,7 @@ local function buildChestFarmCard(bodyScroll)
     local card = createCard(
         bodyScroll,
         "Chest Farm",
-        "Auto teleport smooth ke Chest dan kembali ke posisi awal setelah Chest habis. AutoTP Boss antar lokasi.",
+        "Auto teleport to Chest and back Last location + AutoTP Boss",
         2,
         300
     )
@@ -2484,7 +2508,7 @@ local function buildChestFarmCard(bodyScroll)
     layout.Padding = UDim.new(0, 6)
 
     local autoChestButton      = createToggleButton(container, "Auto Chest", autoChestEnabled)
-    local lastLocButton        = createToggleButton(container, "Last Location (Kembali ke posisi awal)", chestReturnEnabled)
+    local lastLocButton        = createToggleButton(container, "Last Location", chestReturnEnabled)
     local autoTpPoint1Button   = createToggleButton(container, "AutoTP Boss01 & Boss02", autoTpPoint1Enabled)
     local autoTpPoint2Button   = createToggleButton(container, "AutoTP Boss03", autoTpPoint2Enabled)
 
@@ -2504,7 +2528,7 @@ local function buildChestFarmCard(bodyScroll)
 
     table.insert(connections, lastLocButton.MouseButton1Click:Connect(function()
         chestReturnEnabled = not chestReturnEnabled
-        setToggleButtonState(lastLocButton, "Last Location (Kembali ke posisi awal)", chestReturnEnabled)
+        setToggleButtonState(lastLocButton, "Last Location", chestReturnEnabled)
         if not chestReturnEnabled then
             lastLocationCFrame = nil
         end
