@@ -930,7 +930,7 @@ end
 
 local function getBossNameForRegion(region)
     if not region then
-        return "Unknown Boss"
+        return "Humpback Whale/Whale Shark"
     end
 
     for id, display in pairs(BOSS_ID_NAME_MAP) do
@@ -967,7 +967,7 @@ local function getBossNameForRegion(region)
         end
     end
 
-    return "Unknown Boss"
+    return "Humpback Whale/Whale Shark"
 end
 
 local function formatBossRemainingText(remainSeconds)
@@ -1005,7 +1005,7 @@ local function buildSpawnBossEmbed(region, stageKey, remainSeconds, bossName)
         remainingText = formatBossRemainingText(remainSeconds)
     end
 
-    bossName = bossName or "Unknown Boss"
+    bossName = bossName or "Humpback Whale/Whale Shark/Crimson Rift Dragon"
 
     local regionName = getRegionNameForBoss(region)
 
