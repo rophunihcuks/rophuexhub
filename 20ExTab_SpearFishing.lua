@@ -64,7 +64,7 @@ local SKILL_ID_TO_NAME = {
     Skill07 = "Laceration Creation",
     Skill08 = "Demage Power III",
     Skill09 = "Chain Lightning",
-    Skill10 = "Drago Flame",
+    Skill10 = "Dragon Flame",
 }
 
 local function normalizeSkillKey(str)
