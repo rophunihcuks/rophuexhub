@@ -179,9 +179,9 @@ local SHOOT_RANGE_MAX = 1000
 local shootRange      = 600
 
 -- Farm delay
-local FARM_DELAY_MIN  = 0.00
+local FARM_DELAY_MIN  = 0.01
 local FARM_DELAY_MAX  = 0.30
-local farmDelay       = 0.00
+local farmDelay       = 0.01
 
 -- Status label UI (sekarang tidak dipakai, teks dikosongkan)
 local statusLabel
@@ -2366,12 +2366,12 @@ local function buildAutoFarmCard(bodyScroll)
     end
     updateRarityModeButtonText()
 
-    createSliderWithBox(scroll, "Shooting Range (stud) 25 - 1000", SHOOT_RANGE_MIN, SHOOT_RANGE_MAX, shootRange, 0, function(val)
+    createSliderWithBox(scroll, "Shooting Range 25 - 1000", SHOOT_RANGE_MIN, SHOOT_RANGE_MAX, shootRange, 0, function(val)
         shootRange = val
         updateStatusLabel()
     end)
 
-    createSliderWithBox(scroll, "Farm Delay (detik) 0.01 - 0.30", FARM_DELAY_MIN, FARM_DELAY_MAX, farmDelay, 3, function(val)
+    createSliderWithBox(scroll, "Farm Delay 0.01 - 0.30", FARM_DELAY_MIN, FARM_DELAY_MAX, farmDelay, 3, function(val)
         farmDelay = val
         updateStatusLabel()
     end)
