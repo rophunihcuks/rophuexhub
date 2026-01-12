@@ -5,7 +5,7 @@
 
 ------------------- ENV / SHORTCUT -------------------
 local frame   = TAB_FRAME
-local tabId   = TAB_ID or "spearfishmisc"
+local tabId   = TAB_ID or "spearfishing"
 
 local Players             = Players             or game:GetService("Players")
 local LocalPlayer         = LocalPlayer         or Players.LocalPlayer
@@ -254,7 +254,7 @@ local SECRET_SEA_SET = {
     Sea5 = true,
 }
 
--- Per ikan toggle notifier
+-- Per fish toggle notifier
 local illahiFishEnabled = {
     Fish400 = false,
     Fish401 = false,
@@ -274,7 +274,7 @@ local secretFishEnabled = {
     Fish510 = false,
 }
 
--- Per ikan toggle ESP (default false semua)
+-- Per fish toggle ESP (default false semua)
 local espIllahiFishEnabled = {
     Fish400 = false,
     Fish401 = false,
@@ -2584,7 +2584,7 @@ local function buildSpawnControlsCard(bodyScroll)
     local spawnCard = createCard(
         bodyScroll,
         "Spawn Notif Controls",
-        "Settings Notifier Spawn (Boss, HP Boss, Divine, Secret, Climate) global + by Fish.",
+        "Settings Notifier Spawn (Boss, HP Boss, Divine, Secret, Climate) + by Fish.",
         2,
         460
     )
@@ -2726,7 +2726,7 @@ local function buildSpawnControlsCard(bodyScroll)
     illahiLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
     illahiLabel.TextXAlignment = Enum.TextXAlignment.Left
     illahiLabel.Size = UDim2.new(1, 0, 0, 18)
-    illahiLabel.Text = "Divine Notifier per Ikan (Nether Island):"
+    illahiLabel.Text = "Divine Notifier by Fish (Nether Island):"
 
     for _, fishId in ipairs(ILLAHI_ORDER) do
         illahiFishEnabled[fishId] = illahiFishEnabled[fishId] ~= false
@@ -2755,7 +2755,7 @@ local function buildSpawnControlsCard(bodyScroll)
     secretLabel.TextColor3 = Color3.fromRGB(255, 220, 180)
     secretLabel.TextXAlignment = Enum.TextXAlignment.Left
     secretLabel.Size = UDim2.new(1, 0, 0, 18)
-    secretLabel.Text = "Secret Notifier per Ikan (Nether Island):"
+    secretLabel.Text = "Secret Notifier by Fish (Nether Island):"
 
     for _, fishId in ipairs(SECRET_ORDER) do
         secretFishEnabled[fishId] = secretFishEnabled[fishId] == true
@@ -2855,7 +2855,7 @@ local function buildEspCard(bodyScroll)
     espIllahiLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
     espIllahiLabel.TextXAlignment = Enum.TextXAlignment.Left
     espIllahiLabel.Size = UDim2.new(1, 0, 0, 18)
-    espIllahiLabel.Text = "ESP Divine per Ikan (Nether Island):"
+    espIllahiLabel.Text = "ESP Divine by Fish (Nether Island):"
 
     for _, fishId in ipairs(ILLAHI_ORDER) do
         espIllahiFishEnabled[fishId] = espIllahiFishEnabled[fishId] == true
@@ -2886,7 +2886,7 @@ local function buildEspCard(bodyScroll)
     espSecretLabel.TextColor3 = Color3.fromRGB(255, 220, 180)
     espSecretLabel.TextXAlignment = Enum.TextXAlignment.Left
     espSecretLabel.Size = UDim2.new(1, 0, 0, 18)
-    espSecretLabel.Text = "ESP Secret per Ikan (Nether Island):"
+    espSecretLabel.Text = "ESP Secret by Fish (Nether Island):"
 
     for _, fishId in ipairs(SECRET_ORDER) do
         espSecretFishEnabled[fishId] = espSecretFishEnabled[fishId] == true
