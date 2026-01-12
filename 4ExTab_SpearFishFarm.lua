@@ -373,72 +373,72 @@ local function resolveBossDisplayName(rawName)
 end
 
 ------------------- PER FISH CONFIG -------------------
--- Nama UI tanpa prefix "Fishxxx", hanya nama ikan + info
+-- Nama UI DI-RAPIKAN: tanpa "Sea4-10" dan tanpa "Climate" pada label toggle
 local PER_FISH_CONFIG = {
-    { id = "Fish55",  sea = "Sea4", climates = {"Grassland"}, name = "Purple Jellyfish Legendary (Sea4 / Grassland)" },
-    { id = "Fish56",  sea = "Sea4", climates = {"Grassland"}, name = "Prism Jellyfish Legendary (Sea4 / Grassland)" },
-    { id = "Fish57",  sea = "Sea4", climates = {"Grassland"}, name = "Prism Crab Legendary (Sea4 / Grassland)" },
-    { id = "Fish98",  sea = "Sea4", climates = {"Grassland"}, name = "Shark Mythic (Sea4 / Grassland)" },
-    { id = "Fish305", sea = "Sea4", climates = {"Grassland","Marsh","Iceborne"}, name = "Christmas Shark Mythic (Sea4 / All Climate)" },
-    { id = "Fish201", sea = "Sea4", climates = {"Grassland"}, name = "Shimmer Puffer Secret (Sea4 / Grassland)" },
+    { id = "Fish55",  sea = "Sea4", climates = {"Grassland"}, name = "Purple Jellyfish Legendary" },
+    { id = "Fish56",  sea = "Sea4", climates = {"Grassland"}, name = "Prism Jellyfish Legendary" },
+    { id = "Fish57",  sea = "Sea4", climates = {"Grassland"}, name = "Prism Crab Legendary" },
+    { id = "Fish98",  sea = "Sea4", climates = {"Grassland"}, name = "Shark Mythic" },
+    { id = "Fish305", sea = "Sea4", climates = {"Grassland","Marsh","Iceborne"}, name = "Christmas Shark Mythic" },
+    { id = "Fish201", sea = "Sea4", climates = {"Grassland"}, name = "Shimmer Puffer Secret" },
 
-    { id = "Fish104", sea = "Sea4", climates = {"Marsh"}, name = "Bullfrog Legendary (Sea4 / Marsh)" },
-    { id = "Fish105", sea = "Sea4", climates = {"Marsh"}, name = "Poison Dart Frog Mythic (Sea4 / Marsh)" },
-    { id = "Fish102", sea = "Sea4", climates = {"Marsh"}, name = "Swamp Crocodile Mythic (Sea4 / Marsh)" },
-    { id = "Fish97",  sea = "Sea4", climates = {"Marsh"}, name = "Sawtooth Shark Mythic (Sea4 / Marsh)" },
-    { id = "Fish202", sea = "Sea4", climates = {"Marsh"}, name = "Nebula Lantern Carp Secret (Sea4 / Marsh)" },
+    { id = "Fish104", sea = "Sea4", climates = {"Marsh"}, name = "Bullfrog Legendary" },
+    { id = "Fish105", sea = "Sea4", climates = {"Marsh"}, name = "Poison Dart Frog Mythic" },
+    { id = "Fish102", sea = "Sea4", climates = {"Marsh"}, name = "Swamp Crocodile Mythic" },
+    { id = "Fish97",  sea = "Sea4", climates = {"Marsh"}, name = "Sawtooth Shark Mythic" },
+    { id = "Fish202", sea = "Sea4", climates = {"Marsh"}, name = "Nebula Lantern Carp Secret" },
 
-    { id = "Fish121", sea = "Sea4", climates = {"Iceborne"}, name = "Dragon Whisker Fish Legendary (Sea4 / Iceborne)" },
-    { id = "Fish123", sea = "Sea4", climates = {"Iceborne"}, name = "Leatherback Turtle Mythic (Sea4 / Iceborne)" },
-    { id = "Fish111", sea = "Sea4", climates = {"Iceborne"}, name = "Frost Anglerfish Mythic (Sea4 / Iceborne)" },
-    { id = "Fish130", sea = "Sea4", climates = {"Iceborne"}, name = "Devil Ray Mythic (Sea4 / Iceborne)" },
-    { id = "Fish203", sea = "Sea4", climates = {"Iceborne"}, name = "Shimmer Unicorn Fish Secret (Sea4 / Iceborne)" },
+    { id = "Fish121", sea = "Sea4", climates = {"Iceborne"}, name = "Dragon Whisker Fish Legendary" },
+    { id = "Fish123", sea = "Sea4", climates = {"Iceborne"}, name = "Leatherback Turtle Mythic" },
+    { id = "Fish111", sea = "Sea4", climates = {"Iceborne"}, name = "Frost Anglerfish Mythic" },
+    { id = "Fish130", sea = "Sea4", climates = {"Iceborne"}, name = "Devil Ray Mythic" },
+    { id = "Fish203", sea = "Sea4", climates = {"Iceborne"}, name = "Shimmer Unicorn Fish Secret" },
 
-    { id = "Fish500", sea = "Sea5", name = "Abyssal Demon Shark Secret (Sea5)" },
-    { id = "Fish501", sea = "Sea5", name = "Nighfall Demon Shark Secret (Sea5)" },
-    { id = "Fish503", sea = "Sea5", name = "Ancient Gopala Secret (Sea5)" },
-    { id = "Fish504", sea = "Sea5", name = "Nighfall Gopala Secret (Sea5)" },
-    { id = "Fish505", sea = "Sea5", name = "Sharkster Secret (Sea5)" },
-    { id = "Fish508", sea = "Sea5", name = "Mayfly Dragon Secret (Sea5)" },
-    { id = "Fish510", sea = "Sea5", name = "Nighfall Sharkster Secret (Sea5)" },
+    { id = "Fish500", sea = "Sea5", name = "Abyssal Demon Shark Secret" },
+    { id = "Fish501", sea = "Sea5", name = "Nighfall Demon Shark Secret" },
+    { id = "Fish503", sea = "Sea5", name = "Ancient Gopala Secret" },
+    { id = "Fish504", sea = "Sea5", name = "Nighfall Gopala Secret" },
+    { id = "Fish505", sea = "Sea5", name = "Sharkster Secret" },
+    { id = "Fish508", sea = "Sea5", name = "Mayfly Dragon Secret" },
+    { id = "Fish510", sea = "Sea5", name = "Nighfall Sharkster Secret" },
 
-    { id = "Fish502", sea = "Sea5", name = "Ocean Sunfish Mythic (Sea5)" },
-    { id = "Fish506", sea = "Sea5", name = "Squid Mythic (Sea5)" },
-    { id = "Fish507", sea = "Sea5", name = "Belthfish Mythic (Sea5)" },
-    { id = "Fish509", sea = "Sea5", name = "Cylostome Mythic (Sea5)" },
+    { id = "Fish502", sea = "Sea5", name = "Ocean Sunfish Mythic" },
+    { id = "Fish506", sea = "Sea5", name = "Squid Mythic" },
+    { id = "Fish507", sea = "Sea5", name = "Belthfish Mythic" },
+    { id = "Fish509", sea = "Sea5", name = "Cylostome Mythic" },
 
-    { id = "Fish400", sea = "Sea7", name = "Nether Barracuda Divine (Sea6 & Sea7)" },
-    { id = "Fish401", sea = "Sea7", name = "Nether Anglerfish Divine (Sea6 & Sea7)" },
-    { id = "Fish402", sea = "Sea6", name = "Nether Manta Ray Divine (Sea6 & Sea7)" },
-    { id = "Fish403", sea = "Sea6", name = "Nether SwordFish Divine (Sea6 & Sea7)" },
-    { id = "Fish404", sea = "Sea6", name = "Nether Flying Fish Divine (Sea6 & Sea7)" },
-    { id = "Fish405", sea = "Sea6", name = "Diamond Flying Fish Divine (Sea6 & Sea7)" },
+    { id = "Fish400", sea = "Sea7", name = "Nether Barracuda Divine" },
+    { id = "Fish401", sea = "Sea7", name = "Nether Anglerfish Divine" },
+    { id = "Fish402", sea = "Sea6", name = "Nether Manta Ray Divine" },
+    { id = "Fish403", sea = "Sea6", name = "Nether SwordFish Divine" },
+    { id = "Fish404", sea = "Sea6", name = "Nether Flying Fish Divine" },
+    { id = "Fish405", sea = "Sea6", name = "Diamond Flying Fish Divine" },
 
-    { id = "Fish621", sea = "Sea10", name = "Amethyst Ray Divine (Sea10)" },
-    { id = "Fish620", sea = "Sea10", name = "Ray Divine (Sea10)" },
-    { id = "Fish610", sea = "Sea10", name = "Shovelnose Ray Divine (Sea10)" },
-    { id = "Fish609", sea = "Sea10", name = "Greyback Lognose Shark Divine (Sea10)" },
+    { id = "Fish621", sea = "Sea10", name = "Amethyst Ray Divine" },
+    { id = "Fish620", sea = "Sea10", name = "Ray Divine" },
+    { id = "Fish610", sea = "Sea10", name = "Shovelnose Ray Divine" },
+    { id = "Fish609", sea = "Sea10", name = "Greyback Lognose Shark Divine" },
 
-    { id = "Fish611", sea = "Sea8",  name = "Star-Marked Sea Turtle Divine (Sea8)" },
+    { id = "Fish611", sea = "Sea8",  name = "Star-Marked Sea Turtle Divine" },
 
-    { id = "Fish622", sea = "Sea9", name = "Grouper Secret (Sea9)" },
-    { id = "Fish619", sea = "Sea9", name = "Golden Arowana Secret (Sea9)" },
-    { id = "Fish618", sea = "Sea9", name = "Red Arowana Secret (Sea9)" },
-    { id = "Fish617", sea = "Sea9", name = "Jadefin Thin Eel Secret (Sea9)" },
-    { id = "Fish614", sea = "Sea9", name = "Azure-Pattern Discus Mythic (Sea9)" },
-    { id = "Fish615", sea = "Sea9", name = "Bannerfin Butterflyfish Mythic (Sea9)" },
-    { id = "Fish606", sea = "Sea9", name = "Reef Grouper Legendary (Sea9)" },
+    { id = "Fish622", sea = "Sea9", name = "Grouper Secret" },
+    { id = "Fish619", sea = "Sea9", name = "Golden Arowana Secret" },
+    { id = "Fish618", sea = "Sea9", name = "Red Arowana Secret" },
+    { id = "Fish617", sea = "Sea9", name = "Jadefin Thin Eel Secret" },
+    { id = "Fish614", sea = "Sea9", name = "Azure-Pattern Discus Mythic" },
+    { id = "Fish615", sea = "Sea9", name = "Bannerfin Butterflyfish Mythic" },
+    { id = "Fish606", sea = "Sea9", name = "Reef Grouper Legendary" },
 
-    { id = "Fish616", sea = "Sea8", name = "Yellowfin Thin Eel Secret (Sea8)" },
-    { id = "Fish608", sea = "Sea8", name = "Emerald Flounder Secret (Sea8)" },
-    { id = "Fish607", sea = "Sea8", name = "Amethyst Squid Secret (Sea8)" },
-    { id = "Fish605", sea = "Sea8", name = "Sproud Seahorse Secret (Sea8)" },
-    { id = "Fish613", sea = "Sea8", name = "Crimson-Jade Discus Mythic (Sea8)" },
-    { id = "Fish604", sea = "Sea8", name = "Golden Seahorse Mythic (Sea8)" },
-    { id = "Fish603", sea = "Sea8", name = "Crimson Arrow Squid Mythic (Sea8)" },
-    { id = "Fish612", sea = "Sea8", name = "Golden-Spotted Discus Legendary (Sea8)" },
-    { id = "Fish602", sea = "Sea8", name = "Red-Fin Roundbelly Legendary (Sea8)" },
-    { id = "Fish601", sea = "Sea8", name = "Abyss Sunfish Legendary (Sea8)" },
+    { id = "Fish616", sea = "Sea8", name = "Yellowfin Thin Eel Secret" },
+    { id = "Fish608", sea = "Sea8", name = "Emerald Flounder Secret" },
+    { id = "Fish607", sea = "Sea8", name = "Amethyst Squid Secret" },
+    { id = "Fish605", sea = "Sea8", name = "Sproud Seahorse Secret" },
+    { id = "Fish613", sea = "Sea8", name = "Crimson-Jade Discus Mythic" },
+    { id = "Fish604", sea = "Sea8", name = "Golden Seahorse Mythic" },
+    { id = "Fish603", sea = "Sea8", name = "Crimson Arrow Squid Mythic" },
+    { id = "Fish612", sea = "Sea8", name = "Golden-Spotted Discus Legendary" },
+    { id = "Fish602", sea = "Sea8", name = "Red-Fin Roundbelly Legendary" },
+    { id = "Fish601", sea = "Sea8", name = "Abyss Sunfish Legendary" },
 }
 
 local PER_FISH_FLAGS = {}
@@ -1869,7 +1869,7 @@ local function createMainLayout()
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
     title.Position = UDim2.new(0, 14, 0, 4)
     title.Size = UDim2.new(1, -28, 0, 20)
-    title.Text = "Spear Fish Farm V1.3+"
+    title.Text = "Spear Fish Farm V1.3++"
 
     local subtitle = Instance.new("TextLabel")
     subtitle.Name = "Subtitle"
@@ -2211,20 +2211,11 @@ local function getPerFishCandidates()
     local climateTag = getCurrentClimateTag()
     local result = {}
 
+    -- FIX: filter By Fish pure berdasarkan Sea yang aktif (tanpa override ke Sea6-7)
     local function allowCfgForSea(cfg)
         if not cfg.sea then
             return true
         end
-
-        if ILLAHI_NET_SET[cfg.id] then
-            if uiMode == "Sea6" or uiMode == "Sea7" or uiMode == "Sea6_7" then
-                return true
-            end
-            if detectedSeaName == "Sea6" or detectedSeaName == "Sea7" then
-                return true
-            end
-        end
-
         return allowedSeas[cfg.sea] == true
     end
 
@@ -2509,8 +2500,8 @@ local function buildChestFarmCard(bodyScroll)
 
     local autoChestButton      = createToggleButton(container, "Auto Chest", autoChestEnabled)
     local lastLocButton        = createToggleButton(container, "Last Location", chestReturnEnabled)
-    local autoTpPoint1Button   = createToggleButton(container, "AutoTP Boss01 & Boss02", autoTpPoint1Enabled)
-    local autoTpPoint2Button   = createToggleButton(container, "AutoTP Boss03", autoTpPoint2Enabled)
+    local autoTpPoint1Button   = createToggleButton(container, "AutoTP Humpback Whale & Whale Shark", autoTpPoint1Enabled)
+    local autoTpPoint2Button   = createToggleButton(container, "AutoTP Crimson Rift Dragon", autoTpPoint2Enabled)
 
     table.insert(connections, autoChestButton.MouseButton1Click:Connect(function()
         autoChestEnabled = not autoChestEnabled
@@ -2538,22 +2529,22 @@ local function buildChestFarmCard(bodyScroll)
 
     table.insert(connections, autoTpPoint1Button.MouseButton1Click:Connect(function()
         autoTpPoint1Enabled = not autoTpPoint1Enabled
-        setToggleButtonState(autoTpPoint1Button, "AutoTP Boss01 & Boss02", autoTpPoint1Enabled)
+        setToggleButtonState(autoTpPoint1Button, "AutoTP Humpback Whale & Whale Shark", autoTpPoint1Enabled)
         if not autoTpPoint1Enabled then
             tp1CycleState = 0
         end
         updateStatusLabel()
-        notify("Spear Fish Farm", "AutoTP Boss01 & Boss02: " .. (autoTpPoint1Enabled and "ON" or "OFF"), 2)
+        notify("Spear Fish Farm", "AutoTP Humpback Whale & Whale Shark: " .. (autoTpPoint1Enabled and "ON" or "OFF"), 2)
     end))
 
     table.insert(connections, autoTpPoint2Button.MouseButton1Click:Connect(function()
         autoTpPoint2Enabled = not autoTpPoint2Enabled
-        setToggleButtonState(autoTpPoint2Button, "AutoTP Boss03", autoTpPoint2Enabled)
+        setToggleButtonState(autoTpPoint2Button, "AutoTP Crimson Rift Dragon", autoTpPoint2Enabled)
         if not autoTpPoint2Enabled then
             tp2CycleState = 0
         end
         updateStatusLabel()
-        notify("Spear Fish Farm", "AutoTP Boss03: " .. (autoTpPoint2Enabled and "ON" or "OFF"), 2)
+        notify("Spear Fish Farm", "AutoTP Crimson Rift Dragon: " .. (autoTpPoint2Enabled and "ON" or "OFF"), 2)
     end))
 end
 
