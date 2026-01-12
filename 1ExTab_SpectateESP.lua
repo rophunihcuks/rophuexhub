@@ -1,6 +1,6 @@
 --==========================================================
 --  1AxaTab_SpectateESP.lua
---  Spectate + ESP + TP FORCE + SPECT PRO + SPECT DRONE + ESP LINES
+--  Spectate + ESP + TP FORCE + ESP LINES
 --  Env: TAB_FRAME, TAB_ID, Players, LocalPlayer, RunService, Camera
 --==========================================================
 local frame      = TAB_FRAME
@@ -15,13 +15,11 @@ local currentSpectateTarget, spectateMode, respawnConn = nil, "none", nil
 local espAllOn, espAntennaOn, STUDS_TO_METERS = false, false, 1
 local miniNav
 local currentIndex, currentTotal = 0, 0
-local proLastCF = nil -- cache CFrame target (dipakai PRO & DRONE)
 
--- FOV default & FOV drone
+-- FOV default
 local defaultFOV = (Workspace.CurrentCamera and Workspace.CurrentCamera.FieldOfView) or 70
-local DRONE_FOV  = 80
 
--- Raycast param untuk anti tembok kamera drone
+-- Raycast param (masih dipakai jika nanti mau dikembangkan lagi, saat ini aman disimpan)
 local droneRayParams = RaycastParams.new()
 droneRayParams.FilterType = Enum.RaycastFilterType.Blacklist
 droneRayParams.IgnoreWater = true
@@ -71,7 +69,7 @@ local function connect(sig, fn)
     return c
 end
 
--- helper aman untuk AudioListener (biar nggak error di client lama)
+-- helper aman untuk AudioListener
 local function safeSetAudioListener(mode)
     local cam = workspace.CurrentCamera
     if not cam then return end
@@ -86,13 +84,6 @@ local function setDefaultFOV()
     local cam = workspace.CurrentCamera
     if cam then
         cam.FieldOfView = defaultFOV
-    end
-end
-
-local function setDroneFOV()
-    local cam = workspace.CurrentCamera
-    if cam then
-        cam.FieldOfView = DRONE_FOV
     end
 end
 
@@ -233,11 +224,20 @@ makeLabel(frame,"Header","🎥 Spectate + ESP V1.3",
     UDim2.new(1,-10,0,22),UDim2.new(0,5,0,6),
     {Font=Enum.Font.GothamBold,TextSize=15,TextColor3=Color3.fromRGB(40,40,60),XAlign=Enum.TextXAlignment.Left}
 )
-makeLabel(frame,"Sub",
-    "Pilih player, nyalakan ESP (meter), SPECT POV, SPECT FREE, SPECT PRO, SPECT DRONE, atau teleport (TP / TP FORCE).",
-    UDim2.new(1,-10,0,32),UDim2.new(0,5,0,26),
-    {Font=Enum.Font.Gotham,TextSize=12,TextColor3=Color3.fromRGB(90,90,120),
-     XAlign=Enum.TextXAlignment.Left,YAlign=Enum.TextYAlignment.Top,Wrapped=true}
+makeLabel(
+    frame,
+    "Sub",
+    "Select a player, toggle ESP (distance), use SPECT FREE, or teleport (TP / TP FORCE).",
+    UDim2.new(1,-10,0,32),
+    UDim2.new(0,5,0,26),
+    {
+        Font = Enum.Font.Gotham,
+        TextSize = 12,
+        TextColor3 = Color3.fromRGB(90,90,120),
+        XAlign = Enum.TextXAlignment.Left,
+        YAlign = Enum.TextYAlignment.Top,
+        Wrapped = true
+    }
 )
 
 -- ========== SEARCH BOX ==========
@@ -279,34 +279,62 @@ topBar.BackgroundTransparency = 1
 topBar.Parent = frame
 
 local statusLabel = makeLabel(
-    topBar,"StatusLabel","Status: Idle",
-    UDim2.new(1,-360,1,0),UDim2.new(0,0,0,0),
-    {Font=Enum.Font.Gotham,TextSize=13,TextColor3=Color3.fromRGB(70,70,100),XAlign=Enum.TextXAlignment.Left}
+    topBar,
+    "StatusLabel",
+    "Status: Idle",
+    UDim2.new(1,-280,1,0), -- sisakan 280px di kanan untuk tombol
+    UDim2.new(0,0,0,0),
+    {
+        Font = Enum.Font.Gotham,
+        TextSize = 13,
+        TextColor3 = Color3.fromRGB(70,70,100),
+        XAlign = Enum.TextXAlignment.Left
+    }
 )
 
--- ganti tombol STOP menjadi tombol ESP LINES (di kiri ESP ALL)
+-- tombol dikecilkan & dirapatkan supaya tidak tumpuk teks
 local espAntennaBtn = makeButton(
-    topBar,"ESPAntennaButton","ESP LINES: OFF",
-    UDim2.new(0,120,1,0),UDim2.new(1,-304,0,0),
-    Color3.fromRGB(80,80,120),Color3.fromRGB(255,255,255)
+    topBar,
+    "ESPAntennaButton",
+    "ESP LINES: OFF",
+    UDim2.new(0,90,1,0),
+    UDim2.new(1,-276,0,0),
+    Color3.fromRGB(80,80,120),
+    Color3.fromRGB(255,255,255),
+    12
 )
 
 local espAllBtn = makeButton(
-    topBar,"ESPAllButton","ESP ALL: OFF",
-    UDim2.new(0,100,1,0),UDim2.new(1,-174,0,0),
-    Color3.fromRGB(80,80,120),Color3.fromRGB(255,255,255)
+    topBar,
+    "ESPAllButton",
+    "ESP ALL: OFF",
+    UDim2.new(0,90,1,0),
+    UDim2.new(1,-180,0,0),
+    Color3.fromRGB(80,80,120),
+    Color3.fromRGB(255,255,255),
+    12
 )
 
 local scrollLeftBtn = makeButton(
-    topBar,"SpectPrevBtn","<",
-    UDim2.new(0,24,0,24),UDim2.new(1,-64,0.5,-12),
-    Color3.fromRGB(220,220,235),Color3.fromRGB(60,60,90),14
+    topBar,
+    "SpectPrevBtn",
+    "<",
+    UDim2.new(0,22,0,22),
+    UDim2.new(1,-56,0.5,-11),
+    Color3.fromRGB(220,220,235),
+    Color3.fromRGB(60,60,90),
+    14
 )
 
 local scrollRightBtn = makeButton(
-    topBar,"SpectNextBtn",">",
-    UDim2.new(0,24,0,24),UDim2.new(1,-34,0.5,-12),
-    Color3.fromRGB(220,220,235),Color3.fromRGB(60,60,90),14
+    topBar,
+    "SpectNextBtn",
+    ">",
+    UDim2.new(0,22,0,22),
+    UDim2.new(1,-28,0.5,-11),
+    Color3.fromRGB(220,220,235),
+    Color3.fromRGB(60,60,90),
+    14
 )
 
 -- ========== SPECTATE STATE ==========
@@ -351,7 +379,7 @@ local function updateMiniNavInfo()
         local dn, un = currentSpectateTarget.DisplayName or currentSpectateTarget.Name, currentSpectateTarget.Name
         label.Text = string.format("%s (@%s)\n%d/%d", dn, un, currentIndex, currentTotal)
     else
-        label.Text = "Tidak Ada Target\n0/0"
+        label.Text = "No Target\n0/0"
     end
 end
 
@@ -392,7 +420,7 @@ local function ensureMiniNav()
     infoLabel.TextYAlignment = Enum.TextYAlignment.Top
     infoLabel.TextWrapped = true
     infoLabel.Parent = miniNav
-    infoLabel.Text = "Tidak Ada Target\n0/0"
+    infoLabel.Text = "No Target\n0/0"
 
     local prevBtn = makeButton(
         miniNav,"Prev","<",
@@ -422,7 +450,6 @@ local function stopSpectate()
     disconnectRespawn()
     currentSpectateTarget, spectateMode = nil, "none"
     currentIndex, currentTotal = 0, 0
-    proLastCF = nil
     setDefaultFOV()
     hardResetCameraToLocal()
     setSpectateStatus("Idle")
@@ -481,71 +508,48 @@ local function buildRow(plr)
 
     local content = Instance.new("Frame")
     content.Name = "Content"
-    content.Size = UDim2.new(0,420,1,0)
+    content.Size = UDim2.new(0,360,1,0)
     content.BackgroundTransparency, content.BorderSizePixel = 1, 0
     content.Parent = hScroll
 
     makeLabel(
         content,"Name",
         string.format("%s (@%s)",plr.DisplayName or plr.Name,plr.Name),
-        UDim2.new(0,170,1,0),UDim2.new(0,6,0,0),
+        UDim2.new(0,160,1,0),UDim2.new(0,6,0,0),
         {Font=Enum.Font.GothamBold,TextSize=13,TextColor3=Color3.fromRGB(50,50,75),XAlign=Enum.TextXAlignment.Left}
     )
 
-    local baseX, btnW, btnH, spacing = 190, 60, 24, 4
+    -- tombol diperkecil dan dirapikan
+    local baseX, btnW, btnH, spacing = 170, 52, 22, 4
     local curX = baseX
 
     local espBtn = makeButton(
         content,"ESPBtn","ESP",
         UDim2.new(0,btnW,0,btnH),UDim2.new(0,curX,0.5,-btnH/2),
-        Color3.fromRGB(220,220,230),Color3.fromRGB(60,60,90),12
+        Color3.fromRGB(220,220,230),Color3.fromRGB(60,60,90),11
     )
     curX = curX + btnW + spacing
 
-    local spectateWidth = btnW + 4
-    local spectateBtn = makeButton(
-        content,"SpectateBtn","SPECT POV",
-        UDim2.new(0,spectateWidth,0,btnH),UDim2.new(0,curX,0.5,-btnH/2),
-        Color3.fromRGB(200,230,255),Color3.fromRGB(40,60,110),12
-    )
-    curX = curX + spectateWidth + spacing
-
-    local spectFreeWidth = btnW + 12
+    local spectFreeWidth = btnW + 10
     local spectFreeBtn = makeButton(
         content,"SpectFreeBtn","SPECT FREE",
         UDim2.new(0,spectFreeWidth,0,btnH),UDim2.new(0,curX,0.5,-btnH/2),
-        Color3.fromRGB(210,220,255),Color3.fromRGB(40,60,120),12
+        Color3.fromRGB(210,220,255),Color3.fromRGB(40,60,120),11
     )
     curX = curX + spectFreeWidth + spacing
-
-    local spectProWidth = btnW + 20
-    local spectProBtn = makeButton(
-        content,"SpectProBtn","SPECT PRO",
-        UDim2.new(0,spectProWidth,0,btnH),UDim2.new(0,curX,0.5,-btnH/2),
-        Color3.fromRGB(180,220,255),Color3.fromRGB(20,50,120),12
-    )
-    curX = curX + spectProWidth + spacing
-
-    local spectDroneWidth = btnW + 28
-    local spectDroneBtn = makeButton(
-        content,"SpectDroneBtn","SPECT DRONE",
-        UDim2.new(0,spectDroneWidth,0,btnH),UDim2.new(0,curX,0.5,-btnH/2),
-        Color3.fromRGB(170,235,255),Color3.fromRGB(15,40,120),12
-    )
-    curX = curX + spectDroneWidth + spacing
 
     local tpBtn = makeButton(
         content,"TPBtn","TP",
         UDim2.new(0,btnW,0,btnH),UDim2.new(0,curX,0.5,-btnH/2),
-        Color3.fromRGB(210,240,220),Color3.fromRGB(40,90,60),12
+        Color3.fromRGB(210,240,220),Color3.fromRGB(40,90,60),11
     )
     curX = curX + btnW + spacing
 
-    local tpForceWidth = btnW + 24
+    local tpForceWidth = btnW + 16
     local tpForceBtn = makeButton(
         content,"TPForceBtn","TP FORCE",
         UDim2.new(0,tpForceWidth,0,btnH),UDim2.new(0,curX,0.5,-btnH/2),
-        Color3.fromRGB(190,255,210),Color3.fromRGB(20,80,40),12
+        Color3.fromRGB(190,255,210),Color3.fromRGB(20,80,40),11
     )
     curX = curX + tpForceWidth + spacing
 
@@ -561,25 +565,16 @@ local function buildRow(plr)
             espBtn.Text, espBtn.BackgroundColor3 = "ESP", Color3.fromRGB(220,220,230)
         end
     end)
-    connect(spectateBtn.MouseButton1Click,function()
-        minimizeCoreToDock(); ensureMiniNav()
-        startCustomSpectate(plr)
-    end)
+
     connect(spectFreeBtn.MouseButton1Click,function()
         minimizeCoreToDock(); ensureMiniNav()
         startFreeSpectate(plr)
     end)
-    connect(spectProBtn.MouseButton1Click,function()
-        minimizeCoreToDock(); ensureMiniNav()
-        startProSpectate(plr)
-    end)
-    connect(spectDroneBtn.MouseButton1Click,function()
-        minimizeCoreToDock(); ensureMiniNav()
-        startDroneSpectate(plr)
-    end)
+
     connect(tpBtn.MouseButton1Click,function()
         teleportToPlayer(plr)
     end)
+
     connect(tpForceBtn.MouseButton1Click,function()
         teleportToPlayerForce(plr)
     end)
@@ -625,21 +620,11 @@ local function locateIndexInList(plr)
     updateMiniNavInfo()
 end
 
--- ========== SPECTATE MODES ==========
-function startCustomSpectate(plr)
-    disconnectRespawn()
-    setDefaultFOV()
-    currentSpectateTarget, spectateMode = plr, "custom"
-    proLastCF = nil
-    setSpectateStatus(plr and ("Spectate → "..(plr.DisplayName or plr.Name)) or "Idle")
-    locateIndexInList(plr)
-end
-
+-- ========== SPECTATE MODE (FREE ONLY) ==========
 function startFreeSpectate(plr)
     disconnectRespawn()
     setDefaultFOV()
     currentSpectateTarget, spectateMode = plr, "free"
-    proLastCF = nil
 
     local cam = workspace.CurrentCamera
     if plr and plr.Character and cam then
@@ -663,34 +648,13 @@ function startFreeSpectate(plr)
     locateIndexInList(plr)
 end
 
-function startProSpectate(plr)
-    disconnectRespawn()
-    setDefaultFOV()
-    currentSpectateTarget, spectateMode = plr, "pro"
-    proLastCF = nil
-    setSpectateStatus(plr and ("SPECT PRO → "..(plr.DisplayName or plr.Name)) or "Idle")
-    locateIndexInList(plr)
-end
-
-function startDroneSpectate(plr)
-    disconnectRespawn()
-    currentSpectateTarget, spectateMode = plr, "drone"
-    proLastCF = nil
-    setDroneFOV()
-    setSpectateStatus(plr and ("SPECT DRONE → "..(plr.DisplayName or plr.Name)) or "Idle")
-    locateIndexInList(plr)
-end
-
 -- ========== ESP ==========
 function setESPOnTarget(plr, enabled)
     if not plr then return end
 
-    -- flag aktif ESP per-player
     activeESP[plr] = enabled or nil
 
-    -- LINES PER-PLAYER:
-    --  - kalau global ESP LINES OFF → ESP per-player ikut hidupkan/matikan lines untuk plr itu
-    --  - kalau global ESP LINES ON  → lines diatur tombol global, jadi di-skip di sini
+    -- garis (antenna) per-player
     if not espAntennaOn then
         setAntennaForPlayer(plr, enabled and true or false)
     end
@@ -831,7 +795,7 @@ local function spectateStep(dir)
     currentIndex = idx
 
     if target then
-        -- DEFAULT KHUSUS TOMBOL < & > = SPECT FREE SELALU
+        -- Default for < & > buttons: always SPECT FREE
         startFreeSpectate(target)
     else
         stopSpectate()
@@ -876,7 +840,7 @@ connect(espAntennaBtn.MouseButton1Click,function()
         local char = player.Character
         local torsoLocal = char and getTorsoForAntenna(char)
         if not torsoLocal then
-            -- kalau badan kamu belum siap, balikin OFF biar nggak error
+            -- kalau badan kamu belum siap, balikin OFF biar tidak error
             espAntennaOn = false
             espAntennaBtn.Text = "ESP LINES: OFF"
             espAntennaBtn.BackgroundColor3 = Color3.fromRGB(80,80,120)
@@ -920,84 +884,12 @@ connect(runService.RenderStepped,function()
 
     if currentSpectateTarget and spectateMode ~= "none" then
         local cam, char = workspace.CurrentCamera, currentSpectateTarget.Character
-        if cam then
-            if spectateMode == "custom" and char then
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    cam.CameraType = Enum.CameraType.Scriptable
-                    local offset = hrp.CFrame.LookVector * -8 + Vector3.new(0,4,0)
-                    cam.CFrame = CFrame.new(hrp.Position + offset, hrp.Position)
-                    safeSetAudioListener("Camera")
-                end
-            elseif spectateMode == "free" and char then
+        if cam and char then
+            if spectateMode == "free" then
                 local hum = char:FindFirstChildOfClass("Humanoid")
                 if hum then
                     cam.CameraType, cam.CameraSubject = Enum.CameraType.Custom, hum
                     safeSetAudioListener("Character")
-                end
-            elseif spectateMode == "pro" then
-                cam.CameraType = Enum.CameraType.Scriptable
-                local pos, cf = nil, nil
-                if char then
-                    local p, fullCF = getCharPosition(char)
-                    if p and fullCF then
-                        pos, cf = p, fullCF
-                        proLastCF = fullCF
-                    end
-                end
-                if not cf and proLastCF then
-                    cf = proLastCF
-                    pos = proLastCF.Position
-                end
-                if cf and pos then
-                    local offset   = cf.LookVector * -10 + Vector3.new(0,5,0)
-                    local targetCF = CFrame.new(pos + offset, pos)
-                    if cam.CFrame then
-                        cam.CFrame = cam.CFrame:Lerp(targetCF, 0.25)
-                    else
-                        cam.CFrame = targetCF
-                    end
-                    safeSetAudioListener("Camera")
-                end
-            elseif spectateMode == "drone" then
-                cam.CameraType = Enum.CameraType.Scriptable
-                local pos, cf = nil, nil
-                if char then
-                    local p, fullCF = getCharPosition(char)
-                    if p and fullCF then
-                        pos, cf = p, fullCF
-                        proLastCF = fullCF
-                    end
-                end
-                if not cf and proLastCF then
-                    cf  = proLastCF
-                    pos = proLastCF.Position
-                end
-                if cf and pos then
-                    -- Posisi kamera drone: lebih tinggi + agak jauh di belakang, plus anti tembok
-                    local from    = pos + Vector3.new(0,3,0)
-                    local lookDir = (-cf.LookVector).Unit
-                    local baseOffset = lookDir * 28 + Vector3.new(0,40,0)
-                    local desiredPos = pos + baseOffset
-                    local dir = desiredPos - from
-                    local finalPos = desiredPos
-
-                    if dir.Magnitude > 1e-3 then
-                        droneRayParams.FilterDescendantsInstances = { char, player.Character }
-                        local result = Workspace:Raycast(from, dir, droneRayParams)
-                        if result then
-                            finalPos = result.Position - dir.Unit * 2
-                        end
-                    end
-
-                    local targetCF = CFrame.new(finalPos, pos)
-                    if cam.CFrame then
-                        cam.CFrame = cam.CFrame:Lerp(targetCF, 0.25)
-                    else
-                        cam.CFrame = targetCF
-                    end
-                    cam.FieldOfView = DRONE_FOV
-                    safeSetAudioListener("Camera")
                 end
             end
         end
@@ -1019,8 +911,12 @@ connect(runService.RenderStepped,function()
                     if label and label:IsA("TextLabel") then
                         local distStuds = (hrp.Position - myHRP.Position).Magnitude
                         local meters = math.floor(distStuds * STUDS_TO_METERS + 0.5)
-                        label.Text = string.format("%s | @%s | %d meter",
-                            plr.DisplayName or plr.Name, plr.Name, meters)
+                        label.Text = string.format(
+                            "%s | @%s | %d studs",
+                            plr.DisplayName or plr.Name,
+                            plr.Name,
+                            meters
+                        )
                     end
                 end
             end
