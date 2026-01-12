@@ -615,7 +615,7 @@ local function createMainLayout()
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
     title.Position = UDim2.new(0, 14, 0, 4)
     title.Size = UDim2.new(1, -28, 0, 20)
-    title.Text = "Spear Fishing PRO++ v1.1"
+    title.Text = "Spear Fish V1.3"
 
     local subtitle = Instance.new("TextLabel")
     subtitle.Name = "Subtitle"
@@ -2583,8 +2583,8 @@ end
 local function buildSpawnControlsCard(bodyScroll)
     local spawnCard = createCard(
         bodyScroll,
-        "Spawn Controls",
-        "Pengaturan Notifier Spawn (Boss, HP Boss, Divine, Secret, Climate) global + per ikan.",
+        "Spawn Notif Controls",
+        "Settings Notifier Spawn (Boss, HP Boss, Divine, Secret, Climate) global + by Fish.",
         2,
         460
     )
