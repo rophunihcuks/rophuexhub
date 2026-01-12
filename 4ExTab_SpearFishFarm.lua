@@ -1,6 +1,6 @@
 --==========================================================
---  21AxaTab_SpearFishFarm.lua
---  TAB 21: "Spear Fish Farm PRO++"
+--  4ExTab_SpearFishFarm.lua
+--  TAB 4: "Spear Fish Farm PRO++"
 --==========================================================
 
 ------------------- ENV / SHORTCUT -------------------
