@@ -44,7 +44,7 @@ local WorldBoss    = workspace:FindFirstChild("WorldBoss")
 local WorldFp      = workspace:FindFirstChild("WorldFp")
 
 --==========================================================
---  UNLOCK CURSOR (AUTO ON, TANPA TOGGLE/TOMBOL)
+--  UNLOCK CURSOR (AUTO ON, NO TOGGLE/BUTTON)
 --==========================================================
 local isCursorUnlocked = true
 
@@ -69,8 +69,8 @@ table.insert(connections, RunService.RenderStepped:Connect(function()
 end))
 
 -- Auto farm flags
-local autoFarmAll      = true   -- Semua fish sesuai Sea filter
-local autoFarmBoss     = true   -- Boss di WorldBoss
+local autoFarmAll      = true   -- All fish according to Sea filter
+local autoFarmBoss     = true   -- Boss in WorldBoss
 local autoFarmRare     = false  -- Mythic/Legendary/Secret Sea4, Sea5, Sea8, Sea9
 local autoFarmIllahi   = false  -- Divine Sea6, Sea7, Sea8, Sea10
 
@@ -78,7 +78,7 @@ local function isAnyAutoFarmActive()
     return autoFarmAll or autoFarmBoss or autoFarmRare or autoFarmIllahi
 end
 
--- Fire First (toggle dihapus dari UI, tetap aktif di logic)
+-- Fire First (toggle removed from UI, still active in logic)
 local fireFirstEnabled   = isAnyAutoFarmActive()
 local fireChargeEnabled  = true
 
@@ -107,8 +107,8 @@ local BOSS_POINT2_LOOKAT   = Vector3.new(329.28, 113.24, -952.48)
 --==========================================================
 --  AUTO TP INTERNAL STATE
 --==========================================================
-local chestActivityFlag         = false   -- true jika masih proses Chest/LastLocation
-local chestJustFinishedFlag     = false   -- true satu tick setelah Chest + Last Location selesai
+local chestActivityFlag         = false   -- true if Chest/LastLocation is still in progress
+local chestJustFinishedFlag     = false   -- true for one tick right after Chest + Last Location finished
 local lastBossAliveForTp        = false
 local lastBossRegionForTp       = nil
 local pendingTeleportTarget     = nil
@@ -119,9 +119,9 @@ local tp1CycleState             = 0
 local tp2CycleState             = 0
 local NEAR_REMAIN_THRESHOLD     = 240
 local MIN_NEAR_REMAIN           = 180
-local AUTOTP_CHEST_FALLBACK     = 7   -- detik
+local AUTOTP_CHEST_FALLBACK     = 7   -- seconds
 
--- Sea mode (Sea6 & Sea7 gabung)
+-- Sea mode (Sea6 & Sea7 combined)
 local seaModeList = {
     "AutoDetect",
     "Sea1",
@@ -144,7 +144,7 @@ local rarityModeList = {
 }
 local rarityModeIndex = 1
 
--- Mapping nama lokasi untuk UI (tidak lagi tampil "Sea1-10")
+-- Location names mapping for UI (no longer display "Sea1-10")
 local SEA_UI_NAME_MAP = {
     Sea1   = "Beginner River",
     Sea2   = "Rushing Stream",
@@ -169,7 +169,7 @@ local function getSeaDisplayNameForUi(seaCode)
     return SEA_UI_NAME_MAP[seaCode] or seaCode
 end
 
--- AimLock + ESP Antena
+-- AimLock + ESP Antenna
 local aimLockEnabled    = true
 local espAntennaEnabled = true
 
@@ -183,7 +183,7 @@ local FARM_DELAY_MIN  = 0.01
 local FARM_DELAY_MAX  = 0.30
 local farmDelay       = 0.01
 
--- Status label UI (sekarang tidak dipakai, teks dikosongkan)
+-- Status label UI (currently not used, text cleared)
 local statusLabel
 
 -- Boss target
@@ -373,7 +373,7 @@ local function resolveBossDisplayName(rawName)
 end
 
 ------------------- PER FISH CONFIG -------------------
--- Nama UI DI-RAPIKAN: tanpa "Sea4-10" dan tanpa "Climate" pada label toggle
+-- UI names cleaned: without "Sea4-10" and without "Climate" in toggle labels
 local PER_FISH_CONFIG = {
     { id = "Fish55",  sea = "Sea4", climates = {"Grassland"}, name = "Purple Jellyfish Legendary" },
     { id = "Fish56",  sea = "Sea4", climates = {"Grassland"}, name = "Prism Jellyfish Legendary" },
@@ -758,7 +758,7 @@ local function ensureToolEquipped()
     local now = os.clock()
     if now - lastAutoEquipWarn > 5 then
         lastAutoEquipWarn = now
-        notify("Spear Fish Farm", "Equip Harpoon/Gun terlebih dahulu sebelum AutoFarm.", 3)
+        notify("Spear Fish Farm", "Equip Harpoon/Gun before using AutoFarm.", 3)
     end
     return nil
 end
@@ -771,7 +771,7 @@ local function ensureWorldSea()
     return WorldSea
 end
 
--- Pilih Teleport di WorldFp berdasarkan posisi HRP dan target Boss Point
+-- Choose Teleport in WorldFp based on HRP position and target Boss Point
 local function getTeleportPartForPoint(pointName)
     if not WorldFp or not WorldFp.Parent then
         WorldFp = workspace:FindFirstChild("WorldFp")
@@ -1138,7 +1138,7 @@ local function smoothTeleportTo(position, lookAtPos)
     end)
 end
 
-------------------- PRIORITAS BOSS (CEK BOSS HIDUP) -------------------
+------------------- BOSS PRIORITY (CHECK BOSS ALIVE) -------------------
 local function isBossAlive()
     if not autoFarmBoss then
         return false
@@ -1175,7 +1175,7 @@ local function formatBossRemainingText(remainSeconds)
     local s = total % 60
     local mmss = string.format("%02d:%02d", m, s)
 
-    return "Time Now: Guaranteed Divine Boss In " .. mmss .. " menit"
+    return "Time Now: Guaranteed Divine Boss In " .. mmss .. " minutes"
 end
 
 local function getRegionRemainSecondsInternal(region)
@@ -1322,7 +1322,7 @@ local function scheduleAutoTeleport(targetPointName, modeTag, fromRegionName)
         notify(
             "Spear Fish Farm",
             string.format(
-                "Boss di %s mati. Menunggu Chest habis lalu AutoTP ke %s.%s",
+                "Boss in %s is dead. Waiting for Chest to finish, then AutoTP to %s.%s",
                 tostring(fromRegionName),
                 targetPointName,
                 extraText
@@ -1338,7 +1338,7 @@ local function scheduleAutoTeleport(targetPointName, modeTag, fromRegionName)
         notify(
             "Spear Fish Farm",
             string.format(
-                "Boss di %s mati. AutoChest OFF, langsung AutoTP ke %s.%s",
+                "Boss in %s is dead. AutoChest OFF, teleport directly to %s.%s",
                 tostring(fromRegionName),
                 targetPointName,
                 extraText
@@ -1349,7 +1349,7 @@ local function scheduleAutoTeleport(targetPointName, modeTag, fromRegionName)
 end
 
 --==========================================================
---  AUTO TELEPORT BOSS CHECK (DENGAN FALLBACK REGION/CHEST)
+--  AUTO TELEPORT BOSS CHECK (WITH REGION/CHEST FALLBACK)
 --==========================================================
 local function autoTeleportBossCheck()
     local nowAlive = isBossAlive()
@@ -1410,7 +1410,7 @@ local function autoTeleportBossCheck()
                 pendingTeleportMode       = nil
 
                 teleportToBossPoint(dest)
-                notify("Spear Fish Farm", "Chest habis. AutoTP ke " .. dest .. ".", 4)
+                notify("Spear Fish Farm", "Chest finished. AutoTP to " .. dest .. ".", 4)
 
                 if mode == "P1_FWD" then
                     tp1CycleState = 1
@@ -1428,9 +1428,9 @@ local function autoTeleportBossCheck()
                         pendingTeleportCreatedAt = nil
                         notify(
                             "Spear Fish Farm",
-                            "AutoTP fallback: Chest masih aktif setelah " ..
+                            "AutoTP fallback: Chest is still active after " ..
                                 tostring(AUTOTP_CHEST_FALLBACK) ..
-                                "s. Menunggu Chest selesai + Last Location sebelum teleport.",
+                                "s. Waiting for Chest to finish + Last Location before teleport.",
                             5
                         )
                     else
@@ -1445,9 +1445,9 @@ local function autoTeleportBossCheck()
                         teleportToBossPoint(dest)
                         notify(
                             "Spear Fish Farm",
-                            "AutoTP fallback (Chest tidak terdeteksi " ..
+                            "AutoTP fallback (Chest not detected for " ..
                                 tostring(AUTOTP_CHEST_FALLBACK) ..
-                                "s). Teleport ke " .. dest .. ".",
+                                "s). Teleport to " .. dest .. ".",
                             4
                         )
 
@@ -1474,7 +1474,7 @@ local function autoTeleportBossCheck()
                 pendingTeleportMode       = nil
 
                 teleportToBossPoint(dest)
-                notify("Spear Fish Farm", "AutoTP ke " .. dest .. " (AutoChest OFF).", 4)
+                notify("Spear Fish Farm", "AutoTP to " .. dest .. " (AutoChest OFF).", 4)
 
                 if mode == "P1_FWD" then
                     tp1CycleState = 1
@@ -2134,7 +2134,7 @@ end
 
 ------------------- STATUS LABEL -------------------
 local function updateStatusLabel()
-    -- Status text dihapus, tidak ada teks di bagian bawah card supaya header bawah rapi
+    -- Status text removed, no text at bottom so lower headers stay clean
 end
 
 ------------------- CLIMATE + PER FISH UI SYNC -------------------
@@ -2211,7 +2211,7 @@ local function getPerFishCandidates()
     local climateTag = getCurrentClimateTag()
     local result = {}
 
-    -- FIX: filter By Fish pure berdasarkan Sea yang aktif (tanpa override ke Sea6-7)
+    -- FIX: filter By Fish purely based on active Sea (without overriding to Sea6-7)
     local function allowCfgForSea(cfg)
         if not cfg.sea then
             return true
@@ -2258,7 +2258,7 @@ local function refreshPerFishButtons(force)
     if perFishInfoLabel then
         local locationText = getSeaDisplayNameForUi(seaName or "") or "Unknown"
         local climateText  = climateTag or "All"
-        perFishInfoLabel.Text = string.format("By Fish (Location: %s, Climate: %s) – %d option.", locationText, climateText, #configs)
+        perFishInfoLabel.Text = string.format("By Fish (Location: %s, Climate: %s) - %d option.", locationText, climateText, #configs)
     end
 
     for _, cfg in ipairs(configs) do
@@ -2307,7 +2307,7 @@ local function buildAutoFarmCard(bodyScroll)
     local autoFarmRareButton   = createToggleButton(scroll, "AutoFarm Mythic/Legendary/Secret", autoFarmRare)
     local autoFarmIllahiButton = createToggleButton(scroll, "AutoFarm Divine", autoFarmIllahi)
 
-    -- Toggle Fire First dihapus dari UI, tetapi logic tetap aktif (ikut semua AutoFarm)
+    -- Fire First toggle removed from UI, logic stays active (follows all AutoFarm)
     local aimLockButton        = createToggleButton(scroll, "AimLock Fish", aimLockEnabled)
     local espAntennaButton     = createToggleButton(scroll, "ESP Lines Fish", espAntennaEnabled)
 
@@ -2357,11 +2357,11 @@ local function buildAutoFarmCard(bodyScroll)
 
     local function updateRarityModeButtonText()
         if rarityModeIndex == 1 then
-            rarityModeButton.Text = "Rarity Mode: Disabled (pakai AutoFarm di atas)"
+            rarityModeButton.Text = "Rarity Mode: Disabled (use AutoFarm toggles above)"
         elseif rarityModeIndex == 2 then
             rarityModeButton.Text = "Rarity Mode: Legendary/Mythic/Secret/Divine"
         else
-            rarityModeButton.Text = "Rarity Mode: by Fish"
+            rarityModeButton.Text = "Rarity Mode: By Fish"
         end
     end
     updateRarityModeButtonText()
@@ -2479,7 +2479,7 @@ local function buildChestFarmCard(bodyScroll)
     local card = createCard(
         bodyScroll,
         "Chest Farm",
-        "Auto teleport to Chest and back Last location + AutoTP Boss",
+        "Auto teleport to Chest and back to Last Location + AutoTP Boss",
         2,
         300
     )
