@@ -1,11 +1,11 @@
 --==========================================================
 --  3ExTab_SpearFishMisc.lua
---  TAB 3: "Spear Fishing PRO++"
+--  TAB 3: "Spear Fish Misc"
 --==========================================================
 
 ------------------- ENV / SHORTCUT -------------------
 local frame   = TAB_FRAME
-local tabId   = TAB_ID or "spearfishing"
+local tabId   = TAB_ID or "spearfishmisc"
 
 local Players             = Players             or game:GetService("Players")
 local LocalPlayer         = LocalPlayer         or Players.LocalPlayer
@@ -37,13 +37,13 @@ local alive              = true
 -- Notifier
 local spawnBossNotifier    = true      -- Spawn Boss Notifier (global)
 local hpBossNotifier       = true      -- HP Boss HPBar Notifier (global)
-local spawnIllahiNotifier  = false     -- (LOGIC Divine, label di UI/webhook = Divine)
+local spawnIllahiNotifier  = false     -- (LOGIC Divine, label in UI/webhook = Divine)
 local spawnSecretNotifier  = false     -- Secret Notifier (global)
 local climateTimeNotifier  = false     -- Climate Time Notifier (global)
 
 -- ESP
 local espBoss              = true      -- ESP Boss global (default ON)
-local espIllahi            = false     -- ESP Divine global (default OFF, label di UI = Divine)
+local espIllahi            = false     -- ESP Divine global (default OFF, label in UI = Divine)
 local espSecret            = false     -- ESP Secret global (default OFF)
 
 -- Auto Skill (slot ON/OFF)
@@ -53,7 +53,7 @@ local autoSkill3      = false
 local autoSkill4      = false
 local autoSkill5      = false
 
--- Mapping Skill ID -> Nama untuk UI
+-- Mapping Skill ID -> Name for UI
 local SKILL_ID_TO_NAME = {
     Skill01 = "Thunder",
     Skill02 = "Cold Snap",
@@ -75,13 +75,13 @@ local function normalizeSkillKey(str)
     return str
 end
 
--- Mapping Nama (input user) -> ID Skill (case-insensitive, ignore spasi)
+-- Mapping Name (user input) -> Skill ID (case-insensitive, ignore spaces)
 local SKILL_NAME_TO_ID = {}
 for id, name in pairs(SKILL_ID_TO_NAME) do
     local key = normalizeSkillKey(name)
     SKILL_NAME_TO_ID[key] = id
 end
--- Tambahan: dukung input "skill01", "skill1", dll
+-- Additional: support "skill01", "skill1", etc.
 for i = 1, 10 do
     local id = string.format("Skill%02d", i)
     SKILL_NAME_TO_ID["skill" .. tostring(i)]   = id
@@ -97,7 +97,7 @@ local function getSkillUiNameFromId(id)
     return id
 end
 
--- Default mapping slot -> SkillID (SAMA seperti script lama, hanya sekarang bisa diubah via input)
+-- Default mapping slot -> SkillID (same as old script, configurable via input)
 local autoSkill1Id = "Skill04" -- Demage Power II
 local autoSkill2Id = "Skill02" -- Cold Snap
 local autoSkill3Id = "Skill08" -- Demage Power III
@@ -110,8 +110,8 @@ local autoSkill3Name = getSkillUiNameFromId(autoSkill3Id)
 local autoSkill4Name = getSkillUiNameFromId(autoSkill4Id)
 local autoSkill5Name = getSkillUiNameFromId(autoSkill5Id)
 
--- Webhook umum (optional, diisi user dari UI)
-local userWebhookUrl = ""          -- jika kosong -> hanya pakai webhook default di script
+-- Webhook (optional, user input from UI)
+local userWebhookUrl = ""          -- if empty -> only use default webhooks in script
 
 local function getUserWebhookTrimmed()
     if type(userWebhookUrl) ~= "string" then
@@ -130,8 +130,8 @@ local backpack        = LocalPlayer:FindFirstChildOfClass("Backpack") or LocalPl
 local connections     = {}
 local ToolsData       = nil
 
--- UI globals (bagian status/cooldown dihilangkan, tetap disiapkan variabel bila perlu)
-local statusLabel            = nil    -- tidak dipakai lagi (UI status panjang dihapus)
+-- UI globals
+local statusLabel            = nil    -- reserved if needed later
 
 ------------------- REMOTES & GAME INSTANCES -------------------
 local RepRemotes    = ReplicatedStorage:FindFirstChild("Remotes")
@@ -151,7 +151,7 @@ local function safeRequire(folder, name)
     if not obj then return nil end
     local ok, result = pcall(require, obj)
     if not ok then
-        warn("[SpearFishing] Gagal require", name, ":", result)
+        warn("[SpearFishing] Failed to require", name, ":", result)
         return nil
     end
     return result
@@ -274,7 +274,7 @@ local secretFishEnabled = {
     Fish510 = false,
 }
 
--- Per fish toggle ESP (default false semua)
+-- Per fish toggle ESP (default false)
 local espIllahiFishEnabled = {
     Fish400 = false,
     Fish401 = false,
@@ -441,7 +441,6 @@ local function evaluateEspForPart(part)
     if info.fishType == "Boss" then
         should = espBoss
     elseif info.fishType == "Illahi" then
-        -- Illahi = Divine, mengikuti toggle global + per ikan
         if espIllahi and espIllahiFishEnabled[info.fishId] == true then
             should = true
         end
@@ -627,7 +626,7 @@ local function createMainLayout()
     subtitle.TextColor3 = Color3.fromRGB(180, 180, 180)
     subtitle.Position = UDim2.new(0, 14, 0, 22)
     subtitle.Size = UDim2.new(1, -28, 0, 18)
-    subtitle.Text = "Auto Skill + Notif Spawn Boss & HP + ESP Fish + Buy Harpoon."
+    subtitle.Text = "Auto Skill + Spawn/HP Boss Notifier + Fish ESP + Harpoon Shop."
 
     local bodyScroll = Instance.new("ScrollingFrame")
     bodyScroll.Name = "BodyScroll"
@@ -712,7 +711,7 @@ local function createCard(parent, titleText, subtitleText, layoutOrder, height)
         subtitle.TextWrapped = true
         subtitle.Text = subtitleText
         subtitle.Position = UDim2.new(0, 0, 0, 20)
-        subtitle.Size = UDim2.new(1, 0, 0, 30) -- cukup tinggi supaya tidak tertimpa
+        subtitle.Size = UDim2.new(1, 0, 0, 30)
     end
 
     return card
@@ -777,7 +776,7 @@ local function fireSkill(id)
         FishRE:FireServer(unpack(args))
     end)
     if not ok then
-        warn("[SpearFishing] Auto Skill gagal:", id, err)
+        warn("[SpearFishing] Auto Skill failed:", id, err)
     end
 end
 
@@ -818,7 +817,7 @@ local HP_BOSS_BOT_USERNAME     = "HP Boss Notifier"
 local CLIMATE_WEBHOOK_URL      = "https://discord.com/api/webhooks/1456868357138681938/-3FnsflNnf9z3tm2RQvsqbBHKoLjlgQxsTF1KVsTkBEmYd6sYRWr-bQndJQSG2Y0hWNf"
 local CLIMATE_BOT_USERNAME     = "Climate Notifier"
 
--- Bot publik jika user mengisi webhook sendiri
+-- Public bot if user fills custom webhook
 local PUBLIC_WEBHOOK_BOT_USERNAME = "ExHub Notifier"
 local PUBLIC_WEBHOOK_BOT_AVATAR   = SPAWN_BOSS_BOT_AVATAR
 
@@ -860,7 +859,6 @@ local function sendWebhookGeneric(url, username, avatar, embed)
     local payload = {
         username   = username,
         avatar_url = avatar,
-        --content    = DEFAULT_OWNER_DISCORD,
         embeds     = { embed },
     }
 
@@ -899,10 +897,8 @@ local function sendWebhookGeneric(url, username, avatar, embed)
 end
 
 local function sendSpawnBossWebhookEmbed(embed)
-    -- selalu kirim ke webhook default owner
     sendWebhookGeneric(SPAWN_BOSS_WEBHOOK_URL, SPAWN_BOSS_BOT_USERNAME, SPAWN_BOSS_BOT_AVATAR, embed)
 
-    -- jika user isi webhook publik, kirim salinan embed ke sana juga
     local publicUrl = getUserWebhookTrimmed()
     if publicUrl then
         sendWebhookGeneric(publicUrl, PUBLIC_WEBHOOK_BOT_USERNAME, PUBLIC_WEBHOOK_BOT_AVATAR, embed)
@@ -910,10 +906,8 @@ local function sendSpawnBossWebhookEmbed(embed)
 end
 
 local function sendHpBossWebhookEmbed(embed)
-    -- selalu kirim ke webhook default HP Boss
     sendWebhookGeneric(HP_BOSS_WEBHOOK_URL, HP_BOSS_BOT_USERNAME, SPAWN_BOSS_BOT_AVATAR, embed)
 
-    -- jika user isi webhook publik, kirim salinan embed ke sana juga
     local publicUrl = getUserWebhookTrimmed()
     if publicUrl then
         sendWebhookGeneric(publicUrl, PUBLIC_WEBHOOK_BOT_USERNAME, PUBLIC_WEBHOOK_BOT_AVATAR, embed)
@@ -999,14 +993,14 @@ local function formatBossRemainingText(remainSeconds)
         mmss = string.format("%02d:%02d", m, s)
     end
 
-    return "Time Now: Guranteed Divine Boss In " .. mmss .. " menit"
+    return "Time Now: Guaranteed Divine Boss In " .. mmss .. " minutes"
 end
 
 local function buildSpawnBossEmbed(region, stageKey, remainSeconds, bossName)
     local remainingText
 
     if stageKey == "spawn" then
-        remainingText = "Time Now: Guranteed Divine Boss In 00:00 menit"
+        remainingText = "Time Now: Guaranteed Divine Boss In 00:00 minutes"
     else
         remainingText = formatBossRemainingText(remainSeconds)
     end
@@ -1019,10 +1013,10 @@ local function buildSpawnBossEmbed(region, stageKey, remainSeconds, bossName)
     local colorInt
 
     if stageKey == "start" then
-        stageText = "Timer mulai"
+        stageText = "Timer started"
         colorInt  = 0x00BFFF
     elseif stageKey == "near" then
-        stageText = "Sisa waktu 3-4 menit"
+        stageText = "Remaining time 3-4 minutes"
         colorInt  = 0xFFA500
     elseif stageKey == "spawn" then
         stageText = "Boss Spawned"
@@ -1044,7 +1038,6 @@ local function buildSpawnBossEmbed(region, stageKey, remainSeconds, bossName)
 
     local embed = {
         title       = "Spawn Boss",
-        --description = DEFAULT_OWNER_DISCORD,
         color       = colorInt,
         fields      = {
             {
@@ -1053,7 +1046,7 @@ local function buildSpawnBossEmbed(region, stageKey, remainSeconds, bossName)
                 inline = false,
             },
             {
-                name   = "Name Boss",
+                name   = "Boss Name",
                 value  = bossName,
                 inline = true,
             },
@@ -1068,7 +1061,7 @@ local function buildSpawnBossEmbed(region, stageKey, remainSeconds, bossName)
                 inline = false,
             },
             {
-                name   = "Name Map",
+                name   = "Map Name",
                 value  = GAME_NAME,
                 inline = false,
             },
@@ -1112,7 +1105,7 @@ local function buildHpBossEmbed(region, bossName, curHpText, maxHpText, percentT
 
     local description = string.format(
         "%s\nHP %s: %s / %s (%s)",
-        --DEFAULT_OWNER_DISCORD,
+        bossName,
         bossName,
         curHpText,
         maxHpText,
@@ -1145,7 +1138,7 @@ local function buildHpBossEmbed(region, bossName, curHpText, maxHpText, percentT
                 inline = true,
             },
             {
-                name   = "Name Map",
+                name   = "Map Name",
                 value  = GAME_NAME,
                 inline = false,
             },
@@ -1527,7 +1520,7 @@ local function initWorldBossNotifier()
         end
 
         if not worldBossFolder then
-            warn("[SpearFishing] WorldBoss folder tidak ditemukan, Spawn/HP Boss Notifier idle.")
+            warn("[SpearFishing] WorldBoss folder not found, Spawn/HP Boss Notifier idle.")
             return
         end
 
@@ -1558,10 +1551,8 @@ local function initIllahiSpawnNotifier()
         local BOT_USERNAME = "Spawn Divine Notifier"
 
         local function sendDivineWebhookEmbed(embed)
-            -- selalu kirim ke webhook default Divine
             sendWebhookGeneric(WEBHOOK_URL, BOT_USERNAME, SPAWN_BOSS_BOT_AVATAR, embed)
 
-            -- jika user isi webhook publik, kirim salinan embed ke sana juga
             local publicUrl = getUserWebhookTrimmed()
             if publicUrl then
                 sendWebhookGeneric(publicUrl, PUBLIC_WEBHOOK_BOT_USERNAME, PUBLIC_WEBHOOK_BOT_AVATAR, embed)
@@ -1589,7 +1580,6 @@ local function initIllahiSpawnNotifier()
 
             local embed = {
                 title       = "Spawn Divine",
-                --description = DEFAULT_OWNER_DISCORD,
                 color       = 0x9400D3,
                 fields      = {
                     {
@@ -1608,7 +1598,7 @@ local function initIllahiSpawnNotifier()
                         inline = true,
                     },
                     {
-                        name   = "Name Map",
+                        name   = "Map Name",
                         value  = GAME_NAME,
                         inline = false,
                     },
@@ -1703,7 +1693,7 @@ local function initIllahiSpawnNotifier()
         end
 
         if not worldSea then
-            warn("[SpearFishing] WorldSea folder tidak ditemukan, Spawn Divine Notifier idle.")
+            warn("[SpearFishing] WorldSea folder not found, Spawn Divine Notifier idle.")
             return
         end
 
@@ -1730,10 +1720,8 @@ local function initSecretSpawnNotifier()
         local BOT_USERNAME = "Spawn Secret Notifier"
 
         local function sendSecretWebhookEmbed(embed)
-            -- selalu kirim ke webhook default Secret
             sendWebhookGeneric(WEBHOOK_URL, BOT_USERNAME, SPAWN_BOSS_BOT_AVATAR, embed)
 
-            -- jika user isi webhook publik, kirim salinan embed ke sana juga
             local publicUrl = getUserWebhookTrimmed()
             if publicUrl then
                 sendWebhookGeneric(publicUrl, PUBLIC_WEBHOOK_BOT_USERNAME, PUBLIC_WEBHOOK_BOT_AVATAR, embed)
@@ -1761,7 +1749,6 @@ local function initSecretSpawnNotifier()
 
             local embed = {
                 title       = "Spawn Secret",
-                --description = DEFAULT_OWNER_DISCORD,
                 color       = 0xFFD700,
                 fields      = {
                     {
@@ -1780,7 +1767,7 @@ local function initSecretSpawnNotifier()
                         inline = true,
                     },
                     {
-                        name   = "Name Map",
+                        name   = "Map Name",
                         value  = GAME_NAME,
                         inline = false,
                     },
@@ -1875,7 +1862,7 @@ local function initSecretSpawnNotifier()
         end
 
         if not worldSea then
-            warn("[SpearFishing] WorldSea folder tidak ditemukan, Spawn Secret Notifier idle.")
+            warn("[SpearFishing] WorldSea folder not found, Spawn Secret Notifier idle.")
             return
         end
 
@@ -1903,7 +1890,7 @@ local function initClimateTimeNotifier()
             repMgr = safeRequire(UtilityFolder, "RepMgr")
         end
         if not repMgr then
-            warn("[SpearFishing] RepMgr module tidak ditemukan, Climate Time Notifier idle.")
+            warn("[SpearFishing] RepMgr module not found, Climate Time Notifier idle.")
             return
         end
 
@@ -1925,7 +1912,7 @@ local function initClimateTimeNotifier()
         end
 
         if not climateParam then
-            warn("[SpearFishing] Parameter CurrentClimate tidak ditemukan, Climate Time Notifier idle.")
+            warn("[SpearFishing] Parameter CurrentClimate not found, Climate Time Notifier idle.")
             return
         end
 
@@ -2001,7 +1988,6 @@ local function initClimateTimeNotifier()
 
             local embed = {
                 title       = "Climate Time",
-                --description = DEFAULT_OWNER_DISCORD,
                 color       = 0x1E90FF,
                 fields      = {
                     {
@@ -2015,7 +2001,7 @@ local function initClimateTimeNotifier()
                         inline = false,
                     },
                     {
-                        name   = "Name Map",
+                        name   = "Map Name",
                         value  = GAME_NAME,
                         inline = false,
                     },
@@ -2036,10 +2022,8 @@ local function initClimateTimeNotifier()
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%S.000Z"),
             }
 
-            -- selalu kirim ke webhook default Climate
             sendWebhookGeneric(CLIMATE_WEBHOOK_URL, CLIMATE_BOT_USERNAME, SPAWN_BOSS_BOT_AVATAR, embed)
 
-            -- jika user isi webhook publik, kirim salinan embed ke sana juga
             local publicUrl = getUserWebhookTrimmed()
             if publicUrl then
                 sendWebhookGeneric(publicUrl, PUBLIC_WEBHOOK_BOT_USERNAME, PUBLIC_WEBHOOK_BOT_AVATAR, embed)
@@ -2053,7 +2037,6 @@ local function initClimateTimeNotifier()
         end)
         if okInit and currentClimateId ~= nil then
             lastClimateId = currentClimateId
-            -- kirim satu kali saat init untuk state climate sekarang
             sendClimateWebhook(currentClimateId)
         end
 
@@ -2182,7 +2165,7 @@ local function buildHarpoonShopCard(parent)
     local card = createCard(
         parent,
         "Harpoon Shop",
-        "Toko Harpoon (Image + DMG + CRT + Charge + Price).",
+        "Harpoon Shop (Image + DMG + CRT + Charge + Price).",
         4,
         280
     )
@@ -2192,7 +2175,7 @@ local function buildHarpoonShopCard(parent)
     scroll.Parent = card
     scroll.BackgroundTransparency = 1
     scroll.BorderSizePixel = 0
-    scroll.Position = UDim2.new(0, 0, 0, 52)   -- mulai di bawah deskripsi (tidak tertimpa)
+    scroll.Position = UDim2.new(0, 0, 0, 52)
     scroll.Size = UDim2.new(1, 0, 1, -56)
     scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     scroll.ScrollBarThickness = 4
@@ -2302,13 +2285,13 @@ local function buildHarpoonShopCard(parent)
 
         local function onBuy()
             if isHarpoonOwned(id) then
-                notify("Spear Fishing", (data.name or id) .. " sudah dimiliki.", 3)
+                notify("Spear Fishing", (data.name or id) .. " is already owned.", 3)
                 refreshHarpoonOwnership()
                 return
             end
 
             if not ToolRE then
-                notify("Spear Fishing", "Remote ToolRE tidak ditemukan.", 4)
+                notify("Spear Fishing", "Remote ToolRE not found.", 4)
                 return
             end
 
@@ -2319,8 +2302,8 @@ local function buildHarpoonShopCard(parent)
                     PurchaseUtil:getPurchase(id)
                 end)
                 if not ok then
-                    warn("[SpearFishing] PurchaseUtil:getPurchase gagal:", err)
-                    notify("Spear Fishing", "Gagal membuka purchase Robux.", 4)
+                    warn("[SpearFishing] PurchaseUtil:getPurchase failed:", err)
+                    notify("Spear Fishing", "Failed to open Robux purchase.", 4)
                 end
             else
                 local args = {
@@ -2333,10 +2316,10 @@ local function buildHarpoonShopCard(parent)
                 end)
 
                 if ok then
-                    notify("Spear Fishing", "Request beli " .. (data.name or id) .. " dikirim.", 4)
+                    notify("Spear Fishing", "Purchase request for " .. (data.name or id) .. " sent.", 4)
                 else
-                    warn("[SpearFishing] ToolRE:Buy gagal:", err)
-                    notify("Spear Fishing", "Gagal mengirim request beli, cek Output.", 4)
+                    warn("[SpearFishing] ToolRE:Buy failed:", err)
+                    notify("Spear Fishing", "Failed to send purchase request, check Output.", 4)
                 end
             end
         end
@@ -2372,7 +2355,7 @@ local function initToolsDataWatcher()
             return waitFn("Tools")
         end)
         if not ok2 or not result then
-            warn("[SpearFishing] Gagal WaitPlayerData('Tools'):", ok2 and "no result" or result)
+            warn("[SpearFishing] WaitPlayerData('Tools') failed:", ok2 and "no result" or result)
             return
         end
 
@@ -2393,18 +2376,16 @@ local function initToolsDataWatcher()
     end)
 end
 
-------------------- STATUS LABEL HELPER (stub, UI status dihapus) -------------------
+------------------- STATUS LABEL HELPER (stub) -------------------
 local function updateStatusLabel()
-    -- sengaja dikosongkan, karena teks status panjang di UI sudah dihapus
+    -- reserved; no long status text in UI
 end
 
 ------------------- UI BUILDERS -------------------
 local function applySkillFromBox(slotIndex, box, descLabel)
     local raw = box.Text or ""
     raw = raw:gsub("^%s+", ""):gsub("%s+$", "")
-    if raw == "" then
-        -- kosongkan -> revert ke nama sebelumnya
-    else
+    if raw ~= "" then
         local key = normalizeSkillKey(raw)
         local foundId = SKILL_NAME_TO_ID[key]
 
@@ -2444,11 +2425,10 @@ local function applySkillFromBox(slotIndex, box, descLabel)
             end
             return
         else
-            notify("Spear Fishing", "Nama skill tidak dikenali, gunakan Thunder / Cold Snap / dll.", 4)
+            notify("Spear Fishing", "Skill name is not recognized. Use Thunder / Cold Snap / etc.", 4)
         end
     end
 
-    -- revert jika gagal
     local uiName
     if slotIndex == 1 then
         uiName = autoSkill1Name
@@ -2471,7 +2451,7 @@ local function buildSpearControlsCard(bodyScroll)
     local controlCard = createCard(
         bodyScroll,
         "Spear Auto Skill",
-        "Auto Skill 1~5 + custom nama skill (Thunder, Cold Snap, dll).",
+        "Auto Skill 1~5 + Custom Skill name (Thunder, Cold Snap, etc).",
         1,
         220
     )
@@ -2481,7 +2461,7 @@ local function buildSpearControlsCard(bodyScroll)
     controlsScroll.Parent = controlCard
     controlsScroll.BackgroundTransparency = 1
     controlsScroll.BorderSizePixel = 0
-    controlsScroll.Position = UDim2.new(0, 0, 0, 52)    -- di bawah deskripsi
+    controlsScroll.Position = UDim2.new(0, 0, 0, 52)
     controlsScroll.Size = UDim2.new(1, 0, 1, -52)
     controlsScroll.ScrollBarThickness = 4
     controlsScroll.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
@@ -2504,7 +2484,6 @@ local function buildSpearControlsCard(bodyScroll)
         controlsScroll.CanvasSize = UDim2.new(0, 0, 0, controlsLayout.AbsoluteContentSize.Y + 8)
     end))
 
-    -- Row builder (Toggle + TextBox + label deskripsi)
     local function createSkillRow(slotIndex, autoFlag, getName)
         local row = Instance.new("Frame")
         row.Name = "SkillRow" .. tostring(slotIndex)
@@ -2584,7 +2563,7 @@ local function buildSpawnControlsCard(bodyScroll)
     local spawnCard = createCard(
         bodyScroll,
         "Spawn Notif Controls",
-        "Settings Notifier Spawn (Boss, HP Boss, Divine, Secret, Climate) + by Fish.",
+        "Spawn Notifier settings (Boss, HP Boss, Divine, Secret, Climate) + per fish.",
         2,
         460
     )
@@ -2594,7 +2573,7 @@ local function buildSpawnControlsCard(bodyScroll)
     spawnScroll.Parent = spawnCard
     spawnScroll.BackgroundTransparency = 1
     spawnScroll.BorderSizePixel = 0
-    spawnScroll.Position = UDim2.new(0, 0, 0, 52)   -- di bawah deskripsi
+    spawnScroll.Position = UDim2.new(0, 0, 0, 52)
     spawnScroll.Size = UDim2.new(1, 0, 1, -52)
     spawnScroll.ScrollBarThickness = 4
     spawnScroll.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
@@ -2617,7 +2596,6 @@ local function buildSpawnControlsCard(bodyScroll)
         spawnScroll.CanvasSize = UDim2.new(0, 0, 0, spawnLayout.AbsoluteContentSize.Y + 8)
     end))
 
-    -- Input box webhook publik
     local webhookFrame = Instance.new("Frame")
     webhookFrame.Name = "WebhookFrame"
     webhookFrame.Parent = spawnScroll
@@ -2661,9 +2639,9 @@ local function buildSpawnControlsCard(bodyScroll)
         raw = raw:gsub("^%s+", ""):gsub("%s+$", "")
         userWebhookUrl = raw
         if raw ~= "" then
-            notify("Spear Fishing", "Webhook publik diset. Notifier juga dikirim ke ExHub Notifier.", 3)
+            notify("Spear Fishing", "Public webhook set. Notifier will also send to ExHub Notifier.", 3)
         else
-            notify("Spear Fishing", "Webhook publik dikosongkan. Notifier hanya ke webhook default.", 3)
+            notify("Spear Fishing", "Public webhook cleared. Notifier will only use default webhook.", 3)
         end
     end))
 
@@ -2780,7 +2758,7 @@ local function buildEspCard(bodyScroll)
     local espCard = createCard(
         bodyScroll,
         "ESP Fish Controls",
-        "ESP antena kuning dari karakter ke Boss/Divine/Secret + nama dan jarak (stud).",
+        "Yellow ESP beam from character to Boss/Divine/Secret plus name and distance (studs).",
         3,
         420
     )
@@ -2790,7 +2768,7 @@ local function buildEspCard(bodyScroll)
     espScroll.Parent = espCard
     espScroll.BackgroundTransparency = 1
     espScroll.BorderSizePixel = 0
-    espScroll.Position = UDim2.new(0, 0, 0, 52)  -- di bawah deskripsi
+    espScroll.Position = UDim2.new(0, 0, 0, 52)
     espScroll.Size = UDim2.new(1, 0, 1, -52)
     espScroll.ScrollBarThickness = 4
     espScroll.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
@@ -2964,69 +2942,40 @@ if backpack then
 end
 
 ------------------- BACKGROUND LOOPS -------------------
--- Loop Auto Skill 1 & 2 (sequence)
+-- Unified Auto Skill loop 1~5 (ordered, more responsive)
 task.spawn(function()
     while alive do
-        if autoSkill1 or autoSkill2 then
-            if autoSkill1 and autoSkill2 then
+        if autoSkill1 or autoSkill2 or autoSkill3 or autoSkill4 or autoSkill5 then
+            if autoSkill1 then
                 pcall(fireSkill1)
-                local t = 0
-                while t < 0.6 and alive and autoSkill1 and autoSkill2 do
-                    task.wait(0.2)
-                    t = t + 0.2
-                end
-                if not alive then break end
-                if autoSkill1 and autoSkill2 then
-                    pcall(fireSkill2)
-                    local t2 = 0
-                    while t2 < 0.6 and alive and autoSkill1 and autoSkill2 do
-                        task.wait(0.2)
-                        t2 = t2 + 0.2
-                    end
-                end
-            else
-                if autoSkill1 then
-                    pcall(fireSkill1)
-                elseif autoSkill2 then
-                    pcall(fireSkill2)
-                end
-                local t = 0
-                while t < 1 and alive and (autoSkill1 or autoSkill2) do
-                    task.wait(0.2)
-                    t = t + 0.2
-                end
             end
-        else
-            task.wait(0.5)
-        end
-    end
-end)
+            if not alive then break end
+            task.wait(0.25)
 
--- Loop Auto Skill 3-5
-task.spawn(function()
-    while alive do
-        if autoSkill3 or autoSkill4 or autoSkill5 then
+            if autoSkill2 then
+                pcall(fireSkill2)
+            end
+            if not alive then break end
+            task.wait(0.25)
+
             if autoSkill3 then
                 pcall(fireSkill3)
             end
-            task.wait(0.2)
             if not alive then break end
+            task.wait(0.25)
 
             if autoSkill4 then
                 pcall(fireSkill4)
             end
-            task.wait(0.2)
             if not alive then break end
+            task.wait(0.25)
 
             if autoSkill5 then
                 pcall(fireSkill5)
             end
+            if not alive then break end
 
-            local t = 0
-            while t < 1 and alive and (autoSkill3 or autoSkill4 or autoSkill5) do
-                task.wait(0.2)
-                t = t + 0.2
-            end
+            task.wait(0.35)
         else
             task.wait(0.5)
         end
