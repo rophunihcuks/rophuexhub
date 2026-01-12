@@ -2599,7 +2599,7 @@ local function buildAutoFarmCard(bodyScroll)
     end))
     table.insert(connections, espAntennaButton.MouseButton1Click:Connect(function()
         espAntennaEnabled = not espAntennaEnabled
-        setToggleButtonState(espAntennaButton, "ESP Lines Fish, espAntennaEnabled)
+        setToggleButtonState(espAntennaButton, "ESP Lines Fish", espAntennaEnabled)
         refreshAllEsp()
         updateStatusLabel()
         notify("Spear Fish Farm", "ESP Lines Fish: " .. (espAntennaEnabled and "ON" or "OFF"), 2)
