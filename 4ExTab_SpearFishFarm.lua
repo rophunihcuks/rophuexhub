@@ -87,15 +87,15 @@ local function updateFireFirstState()
 end
 
 -- Chest Farm flags + state
-local autoChestEnabled       = true
-local chestReturnEnabled     = true
+local autoChestEnabled       = false
+local chestReturnEnabled     = false
 local lastLocationCFrame     = nil
 local chestCurrentTargetPart = nil
 local chestHadRecently       = false
 local activeChestTween       = nil
 
 -- AutoTP Boss flags
-local autoTpPoint1Enabled = true
+local autoTpPoint1Enabled = false
 local autoTpPoint2Enabled = false
 
 -- AutoTP Boss coordinates
@@ -1869,7 +1869,7 @@ local function createMainLayout()
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
     title.Position = UDim2.new(0, 14, 0, 4)
     title.Size = UDim2.new(1, -28, 0, 20)
-    title.Text = "Spear Fish Farm V1.3++"
+    title.Text = "Spear Fish Farm V1.3"
 
     local subtitle = Instance.new("TextLabel")
     subtitle.Name = "Subtitle"
@@ -2303,7 +2303,7 @@ local function buildAutoFarmCard(bodyScroll)
     end))
 
     local autoFarmAllButton    = createToggleButton(scroll, "AutoFarm Universal", autoFarmAll)
-    local autoFarmBossButton   = createToggleButton(scroll, "AutoFarm Boss", autoFarmBoss)
+    local autoFarmBossButton   = createToggleButton(scroll, "AutoFarm Boss Priority", autoFarmBoss)
     local autoFarmRareButton   = createToggleButton(scroll, "AutoFarm Mythic/Legendary/Secret", autoFarmRare)
     local autoFarmIllahiButton = createToggleButton(scroll, "AutoFarm Divine", autoFarmIllahi)
 
@@ -2425,10 +2425,10 @@ local function buildAutoFarmCard(bodyScroll)
     end))
     table.insert(connections, autoFarmBossButton.MouseButton1Click:Connect(function()
         autoFarmBoss = not autoFarmBoss
-        setToggleButtonState(autoFarmBossButton, "AutoFarm Boss", autoFarmBoss)
+        setToggleButtonState(autoFarmBossButton, "AutoFarm Boss Priority", autoFarmBoss)
         updateFireFirstState()
         updateStatusLabel()
-        notify("Spear Fish Farm", "AutoFarm Boss: " .. (autoFarmBoss and "ON" or "OFF"), 2)
+        notify("Spear Fish Farm", "AutoFarm Boss Priority: " .. (autoFarmBoss and "ON" or "OFF"), 2)
     end))
     table.insert(connections, autoFarmRareButton.MouseButton1Click:Connect(function()
         autoFarmRare = not autoFarmRare
