@@ -87,8 +87,8 @@ local function updateFireFirstState()
 end
 
 -- Chest Farm flags + state
-local autoChestEnabled       = false
-local chestReturnEnabled     = false
+local autoChestEnabled       = true
+local chestReturnEnabled     = true
 local lastLocationCFrame     = nil
 local chestCurrentTargetPart = nil
 local chestHadRecently       = false
