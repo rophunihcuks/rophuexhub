@@ -1,17 +1,6 @@
 --==========================================================
---  20AxaTab_SpearFishing.lua
---  TAB 20: "Spear Fishing PRO++"
---  Fitur:
---    - AutoFarm v1 (Fire Harpoon)
---    - AutoFarm v2 (Tap Trackpad Left/Center)
---    - AutoEquip Harpoon
---    - Auto Skill 1 ~ 5
---    - Sell All Spear Fish
---    - Spawn Boss Notifier + HP Boss Notifier
---    - Spawn Illahi Notifier (global + per ikan)
---    - Spawn Secret Notifier (global + per ikan)
---    - ESP Boss / Illahi / Secret + ESP per ikan
---    - Climate Time Notifier (Discord Webhook)
+--  3ExTab_SpearFishNotif.lua
+--  TAB 3: "Spear Fishing PRO++"
 --==========================================================
 
 ------------------- ENV / SHORTCUT -------------------
@@ -45,35 +34,84 @@ _G.AxaHub.TabCleanup = _G.AxaHub.TabCleanup or {}
 
 local alive              = true
 
--- Core farm
-local autoFarm           = false      -- AutoFarm Harpoon v1
-local autoEquip          = false      -- AutoEquip Harpoon
-local autoFarmV2         = false      -- AutoFarm Fish V2 (tap)
-local autoFarmV2Mode     = "Left"     -- "Left" / "Center"
-
 -- Notifier
-local spawnBossNotifier    = true     -- Spawn Boss Notifier (global)
-local hpBossNotifier       = true     -- HP Boss HPBar Notifier (global)
-local spawnIllahiNotifier  = false     -- Illahi Notifier (global)
+local spawnBossNotifier    = true      -- Spawn Boss Notifier (global)
+local hpBossNotifier       = true      -- HP Boss HPBar Notifier (global)
+local spawnIllahiNotifier  = false     -- (LOGIC Divine, label di UI/webhook = Divine)
 local spawnSecretNotifier  = false     -- Secret Notifier (global)
 local climateTimeNotifier  = false     -- Climate Time Notifier (global)
 
 -- ESP
-local espBoss              = true     -- ESP Boss global (default ON)
-local espIllahi            = true     -- ESP Illahi global (default OFF)
-local espSecret            = true     -- ESP Secret global (default OFF)
+local espBoss              = true      -- ESP Boss global (default ON)
+local espIllahi            = true      -- ESP Divine global (default OFF, label di UI = Divine)
+local espSecret            = true      -- ESP Secret global (default OFF)
 
--- Auto Skill
-local autoSkill1      = true          -- Skill02
-local autoSkill2      = true          -- Skill08
-local autoSkill3      = true          -- Skill01
-local autoSkill4      = true          -- Skill07
-local autoSkill5      = true          -- Skill09
+-- Auto Skill (slot ON/OFF)
+local autoSkill1      = true
+local autoSkill2      = true
+local autoSkill3      = true
+local autoSkill4      = true
+local autoSkill5      = true
 
--- AutoFarm V2 interval (detik)
-local autoFarmV2TapInterval = 0.03
-local TAP_INTERVAL_MIN      = 0.01
-local TAP_INTERVAL_MAX      = 1.00
+-- Mapping Skill ID -> Nama untuk UI
+local SKILL_ID_TO_NAME = {
+    Skill01 = "Thunder",
+    Skill02 = "Cold Snap",
+    Skill03 = "Demage Power I",
+    Skill04 = "Demage Power II",
+    Skill05 = "Quick Shoot",
+    Skill06 = "Sniper Shot",
+    Skill07 = "Laceration Creation",
+    Skill08 = "Demage Power III",
+    Skill09 = "Chain Lightning",
+    Skill10 = "Drago Flame",
+}
+
+local function normalizeSkillKey(str)
+    if not str then return nil end
+    str = tostring(str)
+    str = str:lower()
+    str = str:gsub("%s+", "")
+    return str
+end
+
+-- Mapping Nama (input user) -> ID Skill (case-insensitive, ignore spasi)
+local SKILL_NAME_TO_ID = {}
+for id, name in pairs(SKILL_ID_TO_NAME) do
+    local key = normalizeSkillKey(name)
+    SKILL_NAME_TO_ID[key] = id
+end
+-- Tambahan: dukung input "skill01", "skill1", dll
+for i = 1, 10 do
+    local id = string.format("Skill%02d", i)
+    SKILL_NAME_TO_ID["skill" .. tostring(i)]   = id
+    SKILL_NAME_TO_ID["skill" .. string.format("%02d", i)] = id
+end
+
+local function getSkillUiNameFromId(id)
+    if not id then return "Unknown" end
+    local name = SKILL_ID_TO_NAME[id]
+    if name and name ~= "" then
+        return name
+    end
+    return id
+end
+
+-- Default mapping slot -> SkillID (SAMA seperti script lama, hanya sekarang bisa diubah via input)
+local autoSkill1Id = "Skill04" -- Demage Power II
+local autoSkill2Id = "Skill02" -- Cold Snap
+local autoSkill3Id = "Skill08" -- Demage Power III
+local autoSkill4Id = "Skill01" -- Thunder
+local autoSkill5Id = "Skill07" -- Laceration Creation
+
+local autoSkill1Name = getSkillUiNameFromId(autoSkill1Id)
+local autoSkill2Name = getSkillUiNameFromId(autoSkill2Id)
+local autoSkill3Name = getSkillUiNameFromId(autoSkill3Id)
+local autoSkill4Name = getSkillUiNameFromId(autoSkill4Id)
+local autoSkill5Name = getSkillUiNameFromId(autoSkill5Id)
+
+-- Webhook umum (optional, diisi user dari UI)
+local userWebhookUrl = ""          -- jika kosong -> pakai webhook default di script
 
 local character       = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local backpack        = LocalPlayer:FindFirstChildOfClass("Backpack") or LocalPlayer:WaitForChild("Backpack")
@@ -83,10 +121,8 @@ local ToolsData       = nil
 local SpearFishData   = nil
 local spearInitTried  = false
 
--- UI globals yang perlu dipakai lintas fungsi
-local statusLabel            -- label status paling bawah di Spear Controls
-local autoFarmV2Button       -- tombol AutoFarm V2 (dipakai juga oleh hotkey G)
-local skillInfo1, skillInfo2 -- label info cooldown skill 1 & 2
+-- UI globals (bagian status/cooldown dihilangkan, tetap disiapkan variabel bila perlu)
+local statusLabel            = nil    -- tidak dipakai lagi (UI status panjang dihapus)
 
 ------------------- REMOTES & GAME INSTANCES -------------------
 local RepRemotes    = ReplicatedStorage:FindFirstChild("Remotes")
@@ -160,7 +196,7 @@ local HARPOON_IDS = {
     "Harpoon21",
 }
 
--- Illahi fish (Nether Island)
+-- Illahi / Divine fish (Nether Island)
 local ILLAHI_ORDER = {
     "Fish400",
     "Fish401",
@@ -171,11 +207,11 @@ local ILLAHI_ORDER = {
 }
 
 local ILLAHI_FISH_DEFS = {
-    Fish400 = { name = "Nether Barracuda",   sea = "Sea7" },
-    Fish401 = { name = "Nether Anglerfish",  sea = "Sea7" },
-    Fish402 = { name = "Nether Manta Ray",   sea = "Sea6" },
-    Fish403 = { name = "Nether SwordFish",   sea = "Sea6" },
-    Fish404 = { name = "Nether Flying Fish", sea = "Sea6" },
+    Fish400 = { name = "Nether Barracuda",    sea = "Sea7" },
+    Fish401 = { name = "Nether Anglerfish",   sea = "Sea7" },
+    Fish402 = { name = "Nether Manta Ray",    sea = "Sea6" },
+    Fish403 = { name = "Nether SwordFish",    sea = "Sea6" },
+    Fish404 = { name = "Nether Flying Fish",  sea = "Sea6" },
     Fish405 = { name = "Diamond Flying Fish", sea = "Sea6" },
 }
 
@@ -250,13 +286,8 @@ local espSecretFishEnabled = {
 }
 
 ------------------- ESP DATA STRUCT -------------------
--- target yang bisa di-ESP (Boss, Illahi, Secret)
--- trackedFishEspTargets[part] = { fishId, fishType, displayName }
-local trackedFishEspTargets = {}
-
--- ESP instance aktif
--- fishEspMap[part] = { beam, attachment, billboard, label, displayName, fishType, fishId }
-local fishEspMap    = {}
+local trackedFishEspTargets = {} -- [part] = { fishId, fishType, displayName }
+local fishEspMap    = {}        -- [part] = { beam, attachment, billboard, label, ... }
 local hrpAttachment = nil
 
 ------------------- ESP HELPER -------------------
@@ -401,6 +432,7 @@ local function evaluateEspForPart(part)
     if info.fishType == "Boss" then
         should = espBoss
     elseif info.fishType == "Illahi" then
+        -- Illahi = Divine, mengikuti toggle global + per ikan
         if espIllahi and espIllahiFishEnabled[info.fishId] == true then
             should = true
         end
@@ -472,7 +504,7 @@ local function updateEspTextDistances()
             if ok and data.label then
                 local nameText = data.displayName or "Fish"
                 local d = math.floor(dist or 0)
-                data.label.Text = string.format("%s | %d suds", nameText, d)
+                data.label.Text = string.format("%s | %d studs", nameText, d)
             end
         end
     end
@@ -514,16 +546,6 @@ local function getBestHarpoonTool()
     scanContainer(backpack)
 
     return bestTool
-end
-
-local function ensureHarpoonEquipped()
-    if not character then return end
-    if getEquippedHarpoonTool() then return end
-
-    local best = getBestHarpoonTool()
-    if best then
-        best.Parent = character
-    end
 end
 
 local function isToolOwnedGeneric(id)
@@ -596,7 +618,7 @@ local function createMainLayout()
     subtitle.TextColor3 = Color3.fromRGB(180, 180, 180)
     subtitle.Position = UDim2.new(0, 14, 0, 22)
     subtitle.Size = UDim2.new(1, -28, 0, 18)
-    subtitle.Text = "Auto Skill + Spawn Boss/HP,Divine Notifier + ESP Fish + Buy Harpoon."
+    subtitle.Text = "Auto Skill + Notif Spawn Boss/HP+Divine + ESP Fish + Buy Harpoon."
 
     local bodyScroll = Instance.new("ScrollingFrame")
     bodyScroll.Name = "BodyScroll"
@@ -681,7 +703,7 @@ local function createCard(parent, titleText, subtitleText, layoutOrder, height)
         subtitle.TextWrapped = true
         subtitle.Text = subtitleText
         subtitle.Position = UDim2.new(0, 0, 0, 20)
-        subtitle.Size = UDim2.new(1, 0, 0, 26)
+        subtitle.Size = UDim2.new(1, 0, 0, 30) -- cukup tinggi supaya tidak tertimpa
     end
 
     return card
@@ -726,108 +748,6 @@ local function createToggleButton(parent, labelText, initialState)
     update(initialState)
 
     return button, update
-end
-
-------------------- AUTO FARM V1 (FIRE HARPOON) -------------------
-local lastShotClock = 0
-local FIRE_INTERVAL = 0.35
-
-local function doFireHarpoon()
-    if not alive or not autoFarm then return end
-    if not FireRE then return end
-    if not character then return end
-
-    local now = os.clock()
-    if now - lastShotClock < FIRE_INTERVAL then
-        return
-    end
-    lastShotClock = now
-
-    local harpoon = getEquippedHarpoonTool()
-    if (not harpoon) and autoEquip then
-        ensureHarpoonEquipped()
-        harpoon = getEquippedHarpoonTool()
-    end
-    if not harpoon then
-        return
-    end
-
-    local camera = workspace.CurrentCamera
-    if not camera then
-        return
-    end
-
-    local viewport = camera.ViewportSize
-    local centerX, centerY = viewport.X / 2, viewport.Y / 2
-
-    local ray = camera:ScreenPointToRay(centerX, centerY, 0)
-    local origin = ray.Origin
-    local direction = ray.Direction
-    local destination = origin + direction * 300
-
-    local args = {
-        [1] = "Fire",
-        [2] = {
-            ["cameraOrigin"] = origin,
-            ["player"]       = LocalPlayer,
-            ["toolInstance"] = harpoon,
-            ["destination"]  = destination,
-            ["isCharge"]     = false
-        }
-    }
-
-    local ok, err = pcall(function()
-        FireRE:FireServer(unpack(args))
-    end)
-    if not ok then
-        warn("[SpearFishing] FireRE:FireServer gagal:", err)
-    end
-end
-
-------------------- AUTO FARM V2 (TAP TRACKPAD LEFT/CENTER) -------------------
-local function getTapPositionForMode(mode)
-    local camera = workspace.CurrentCamera
-    if not camera then return nil end
-    local v = camera.ViewportSize
-    local y = v.Y * 0.8
-    local x
-    if mode == "Left" then
-        x = v.X * 0.3
-    else
-        x = v.X * 0.5
-    end
-    return Vector2.new(x, y)
-end
-
-local function tapScreenPosition(pos)
-    if not pos or not VirtualInputManager then return end
-
-    if UserInputService:GetFocusedTextBox() then
-        return
-    end
-
-    local x, y = pos.X, pos.Y
-
-    if isTouch then
-        pcall(function()
-            VirtualInputManager:SendTouchEvent(x, y, 0, true, workspace.CurrentCamera, 0)
-            VirtualInputManager:SendTouchEvent(x, y, 0, false, workspace.CurrentCamera, 0)
-        end)
-    else
-        pcall(function()
-            VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 0)
-            VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 0)
-        end)
-    end
-end
-
-local function doAutoTapV2()
-    if not alive or not autoFarmV2 then return end
-
-    local pos = getTapPositionForMode(autoFarmV2Mode)
-    if not pos then return end
-
-    tapScreenPosition(pos)
 end
 
 ------------------- SPEAR FISH DATA + SELL ALL -------------------
@@ -968,165 +888,53 @@ local function sellAllFish()
 end
 
 ------------------- AUTO SKILL 1 ~ 5 -------------------
-local SKILL1_COOLDOWN    = 15
-local SKILL2_COOLDOWN    = 20
-local SKILL_SEQUENCE_GAP = 3
-
-local skill1LastFireTime = 0
-local skill2LastFireTime = 0
-local skill3LastFireTime = 0
-local skill4LastFireTime = 0
-local skill5LastFireTime = 0
-
-local skill1BaseInfoText = string.format(
-    "Skill 1 (Skill02) Cooldown server (perkiraan): %d detik (UI info).",
-    SKILL1_COOLDOWN
-)
-
-local skill2BaseInfoText = string.format(
-    "Skill 2 (Skill08) Cooldown server (perkiraan): %d detik (UI info). Jeda antar Skill1 -> Skill2: %d detik.",
-    SKILL2_COOLDOWN,
-    SKILL_SEQUENCE_GAP
-)
-
-local function fireSkill1()
-    if not alive or not autoSkill1 then return end
-    if not FishRE then return end
-
+local function fireSkill(id)
+    if not alive or not FishRE then
+        return
+    end
+    if not id or id == "" then
+        return
+    end
     local args = {
         [1] = "Skill",
         [2] = {
-            ["ID"] = "Skill04"
+            ["ID"] = id
         }
     }
-
     local ok, err = pcall(function()
         FishRE:FireServer(unpack(args))
     end)
-    if ok then
-        skill1LastFireTime = os.clock()
-    else
-        warn("[SpearFishing] Auto Skill04 gagal:", err)
+    if not ok then
+        warn("[SpearFishing] Auto Skill gagal:", id, err)
     end
+end
+
+local function fireSkill1()
+    if not autoSkill1 then return end
+    fireSkill(autoSkill1Id or "Skill04")
 end
 
 local function fireSkill2()
-    if not alive or not autoSkill2 then return end
-    if not FishRE then return end
-
-    local args = {
-        [1] = "Skill",
-        [2] = {
-            ["ID"] = "Skill02"
-        }
-    }
-
-    local ok, err = pcall(function()
-        FishRE:FireServer(unpack(args))
-    end)
-    if ok then
-        skill2LastFireTime = os.clock()
-    else
-        warn("[SpearFishing] Auto Skill02 gagal:", err)
-    end
+    if not autoSkill2 then return end
+    fireSkill(autoSkill2Id or "Skill02")
 end
 
 local function fireSkill3()
-    if not alive or not autoSkill3 then return end
-    if not FishRE then return end
-
-    local args = {
-        [1] = "Skill",
-        [2] = {
-            ["ID"] = "Skill08"
-        }
-    }
-
-    local ok, err = pcall(function()
-        FishRE:FireServer(unpack(args))
-    end)
-    if ok then
-        skill3LastFireTime = os.clock()
-    else
-        warn("[SpearFishing] Auto Skill08 gagal:", err)
-    end
+    if not autoSkill3 then return end
+    fireSkill(autoSkill3Id or "Skill08")
 end
 
 local function fireSkill4()
-    if not alive or not autoSkill4 then return end
-    if not FishRE then return end
-
-    local args = {
-        [1] = "Skill",
-        [2] = {
-            ["ID"] = "Skill01"
-        }
-    }
-
-    local ok, err = pcall(function()
-        FishRE:FireServer(unpack(args))
-    end)
-    if ok then
-        skill4LastFireTime = os.clock()
-    else
-        warn("[SpearFishing] Auto Skill01 gagal:", err)
-    end
+    if not autoSkill4 then return end
+    fireSkill(autoSkill4Id or "Skill01")
 end
 
 local function fireSkill5()
-    if not alive or not autoSkill5 then return end
-    if not FishRE then return end
-
-    local args = {
-        [1] = "Skill",
-        [2] = {
-            ["ID"] = "Skill07"
-        }
-    }
-
-    local ok, err = pcall(function()
-        FishRE:FireServer(unpack(args))
-    end)
-    if ok then
-        skill5LastFireTime = os.clock()
-    else
-        warn("[SpearFishing] Auto Skill07 gagal:", err)
-    end
+    if not autoSkill5 then return end
+    fireSkill(autoSkill5Id or "Skill07")
 end
 
-local function updateSkillCooldownUI()
-    local now = os.clock()
-
-    if skillInfo1 then
-        local text1 = skill1BaseInfoText
-        if skill1LastFireTime > 0 then
-            local elapsed = now - skill1LastFireTime
-            local remaining = SKILL1_COOLDOWN - elapsed
-            if remaining > 0 then
-                text1 = string.format("%s | Sisa: %ds", skill1BaseInfoText, math.ceil(remaining))
-            else
-                text1 = string.format("%s | Ready", skill1BaseInfoText)
-            end
-        end
-        skillInfo1.Text = text1
-    end
-
-    if skillInfo2 then
-        local text2 = skill2BaseInfoText
-        if skill2LastFireTime > 0 then
-            local elapsed = now - skill2LastFireTime
-            local remaining = SKILL2_COOLDOWN - elapsed
-            if remaining > 0 then
-                text2 = string.format("%s | Sisa: %ds", skill2BaseInfoText, math.ceil(remaining))
-            else
-                text2 = string.format("%s | Ready", skill2BaseInfoText)
-            end
-        end
-        skillInfo2.Text = text2
-    end
-end
-
-------------------- SPAWN BOSS / HP BOSS NOTIFIER -------------------
+------------------- SPAWN BOSS / HP BOSS / CLIMATE WEBHOOK CORE -------------------
 local SPAWN_BOSS_WEBHOOK_URL   = "https://discord.com/api/webhooks/1435079884073341050/vEy2YQrpQQcN7pMs7isWqPtylN_AyJbzCAo_xDqM7enRacbIBp43SG1IR_hH-3j4zrfW"
 local SPAWN_BOSS_BOT_USERNAME  = "Spawn Boss Notifier"
 local SPAWN_BOSS_BOT_AVATAR    = "https://mylogo.edgeone.app/Logo%20Ax%20(NO%20BG).png"
@@ -1137,6 +945,10 @@ local HP_BOSS_BOT_USERNAME     = "HP Boss Notifier"
 
 local CLIMATE_WEBHOOK_URL      = "https://discord.com/api/webhooks/1456868357138681938/-3FnsflNnf9z3tm2RQvsqbBHKoLjlgQxsTF1KVsTkBEmYd6sYRWr-bQndJQSG2Y0hWNf"
 local CLIMATE_BOT_USERNAME     = "Climate Notifier"
+
+-- Bot publik jika user mengisi webhook sendiri
+local PUBLIC_WEBHOOK_BOT_USERNAME = "ExHub Notifier"
+local PUBLIC_WEBHOOK_BOT_AVATAR   = SPAWN_BOSS_BOT_AVATAR
 
 local BOSS_ID_NAME_MAP = {
     Boss01 = "Humpback Whale",
@@ -1166,6 +978,13 @@ local function getSpawnBossRequestFunc()
     end
 
     return spawnBossRequestFunc
+end
+
+local function resolveWebhook(defaultUrl, defaultUsername)
+    if userWebhookUrl and userWebhookUrl ~= "" then
+        return userWebhookUrl, PUBLIC_WEBHOOK_BOT_USERNAME, PUBLIC_WEBHOOK_BOT_AVATAR
+    end
+    return defaultUrl, defaultUsername, SPAWN_BOSS_BOT_AVATAR
 end
 
 local function sendWebhookGeneric(url, username, avatar, embed)
@@ -1215,13 +1034,16 @@ local function sendWebhookGeneric(url, username, avatar, embed)
 end
 
 local function sendSpawnBossWebhookEmbed(embed)
-    sendWebhookGeneric(SPAWN_BOSS_WEBHOOK_URL, SPAWN_BOSS_BOT_USERNAME, SPAWN_BOSS_BOT_AVATAR, embed)
+    local url, username, avatar = resolveWebhook(SPAWN_BOSS_WEBHOOK_URL, SPAWN_BOSS_BOT_USERNAME)
+    sendWebhookGeneric(url, username, avatar, embed)
 end
 
 local function sendHpBossWebhookEmbed(embed)
-    sendWebhookGeneric(HP_BOSS_WEBHOOK_URL, HP_BOSS_BOT_USERNAME, SPAWN_BOSS_BOT_AVATAR, embed)
+    local url, username, avatar = resolveWebhook(HP_BOSS_WEBHOOK_URL, HP_BOSS_BOT_USERNAME)
+    sendWebhookGeneric(url, username, avatar, embed)
 end
 
+------------------- BOSS / HP HELPERS -------------------
 local function getRegionNameForBoss(region)
     if not region or not region.Name then
         return "Unknown"
@@ -1847,7 +1669,7 @@ local function initWorldBossNotifier()
     end)
 end
 
-------------------- SPAWN ILLAHI NOTIFIER -------------------
+------------------- SPAWN DIVINE (ILLAHI) NOTIFIER -------------------
 local function initIllahiSpawnNotifier()
     task.spawn(function()
         task.wait(3)
@@ -1856,9 +1678,14 @@ local function initIllahiSpawnNotifier()
         end
 
         local WEBHOOK_URL = "https://discord.com/api/webhooks/1456157133325209764/ymVmoJR0gV21o_IpvCn6sj2jR31TqZPnWMem7jEmxZLt_Pn__7j1cdsqna1u1mBq7yWz"
-        local BOT_USERNAME = "Spawn Illahi Notifier"
+        local BOT_USERNAME = "Spawn Divine Notifier"
 
-        local function buildIllahiSpawnEmbed(region, fishId, fishName)
+        local function sendDivineWebhookEmbed(embed)
+            local url, username, avatar = resolveWebhook(WEBHOOK_URL, BOT_USERNAME)
+            sendWebhookGeneric(url, username, avatar, embed)
+        end
+
+        local function buildDivineSpawnEmbed(region, fishId, fishName)
             local regionName = getRegionNameForBoss(region)
             local islandName = "Nether Island"
 
@@ -1878,12 +1705,12 @@ local function initIllahiSpawnNotifier()
             end
 
             local embed = {
-                title       = "Spawn Illahi",
+                title       = "Spawn Divine",
                 description = DEFAULT_OWNER_DISCORD,
                 color       = 0x9400D3,
                 fields      = {
                     {
-                        name   = "Illahi Fish",
+                        name   = "Divine Fish",
                         value  = fishLabel,
                         inline = true,
                     },
@@ -1914,7 +1741,7 @@ local function initIllahiSpawnNotifier()
                     },
                 },
                 footer = {
-                    text = "Spear Fishing PRO+ | Spawn Illahi Notifier",
+                    text = "Spear Fishing PRO+ | Spawn Divine Notifier",
                 },
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%S.000Z"),
             }
@@ -1922,11 +1749,7 @@ local function initIllahiSpawnNotifier()
             return embed
         end
 
-        local function sendIllahiWebhookEmbed(embed)
-            sendWebhookGeneric(WEBHOOK_URL, BOT_USERNAME, SPAWN_BOSS_BOT_AVATAR, embed)
-        end
-
-        local function handleIllahiFish(region, fishPart)
+        local function handleDivineFish(region, fishPart)
             if not fishPart or not fishPart.Name then
                 return
             end
@@ -1949,11 +1772,11 @@ local function initIllahiSpawnNotifier()
             end
 
             local fishName = def.name or fishPart.Name
-            local embed = buildIllahiSpawnEmbed(region, fishPart.Name, fishName)
-            sendIllahiWebhookEmbed(embed)
+            local embed = buildDivineSpawnEmbed(region, fishPart.Name, fishName)
+            sendDivineWebhookEmbed(embed)
         end
 
-        local function registerIllahiRegion(region)
+        local function registerDivineRegion(region)
             if not region or not region.Name then
                 return
             end
@@ -1972,7 +1795,7 @@ local function initIllahiSpawnNotifier()
                     return
                 end
                 if ILLAHI_FISH_DEFS[child.Name] then
-                    handleIllahiFish(region, child)
+                    handleDivineFish(region, child)
                 end
             end
 
@@ -1997,17 +1820,17 @@ local function initIllahiSpawnNotifier()
         end
 
         if not worldSea then
-            warn("[SpearFishing] WorldSea folder tidak ditemukan, Spawn Illahi Notifier idle.")
+            warn("[SpearFishing] WorldSea folder tidak ditemukan, Spawn Divine Notifier idle.")
             return
         end
 
         for _, child in ipairs(worldSea:GetChildren()) do
-            registerIllahiRegion(child)
+            registerDivineRegion(child)
         end
 
         table.insert(connections, worldSea.ChildAdded:Connect(function(child)
             if not alive then return end
-            registerIllahiRegion(child)
+            registerDivineRegion(child)
         end))
     end)
 end
@@ -2022,6 +1845,11 @@ local function initSecretSpawnNotifier()
 
         local WEBHOOK_URL = "https://discord.com/api/webhooks/1456257955682062367/UKn20-hMHwtjd0BNsoH_aV_f30V7jlkTux2QNlwnb259BEEbabIifrYinj1I7XPK_0xK"
         local BOT_USERNAME = "Spawn Secret Notifier"
+
+        local function sendSecretWebhookEmbed(embed)
+            local url, username, avatar = resolveWebhook(WEBHOOK_URL, BOT_USERNAME)
+            sendWebhookGeneric(url, username, avatar, embed)
+        end
 
         local function buildSecretSpawnEmbed(region, fishId, fishName)
             local regionName = getRegionNameForBoss(region)
@@ -2085,10 +1913,6 @@ local function initSecretSpawnNotifier()
             }
 
             return embed
-        end
-
-        local function sendSecretWebhookEmbed(embed)
-            sendWebhookGeneric(WEBHOOK_URL, BOT_USERNAME, SPAWN_BOSS_BOT_AVATAR, embed)
         end
 
         local function handleSecretFish(region, fishPart)
@@ -2323,7 +2147,8 @@ local function initClimateTimeNotifier()
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%S.000Z"),
             }
 
-            sendWebhookGeneric(CLIMATE_WEBHOOK_URL, CLIMATE_BOT_USERNAME, SPAWN_BOSS_BOT_AVATAR, embed)
+            local url, username, avatar = resolveWebhook(CLIMATE_WEBHOOK_URL, CLIMATE_BOT_USERNAME)
+            sendWebhookGeneric(url, username, avatar, embed)
         end
 
         local lastClimateId = nil
@@ -2472,8 +2297,8 @@ local function buildHarpoonShopCard(parent)
     scroll.Parent = card
     scroll.BackgroundTransparency = 1
     scroll.BorderSizePixel = 0
-    scroll.Position = UDim2.new(0, 0, 0, 40)
-    scroll.Size = UDim2.new(1, 0, 1, -44)
+    scroll.Position = UDim2.new(0, 0, 0, 52)   -- mulai di bawah deskripsi (tidak tertimpa)
+    scroll.Size = UDim2.new(1, 0, 1, -56)
     scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     scroll.ScrollBarThickness = 4
     scroll.HorizontalScrollBarInset = Enum.ScrollBarInset.ScrollBar
@@ -2673,41 +2498,85 @@ local function initToolsDataWatcher()
     end)
 end
 
-------------------- STATUS LABEL HELPER -------------------
+------------------- STATUS LABEL HELPER (stub, UI status dihapus) -------------------
 local function updateStatusLabel()
-    if not statusLabel then
-        return
-    end
-
-    statusLabel.Text = string.format(
-        "Status: AutoFarm %s, AutoEquip %s, AutoFarm V2 %s (%s, %.2fs), SpawnBossNotifier %s, SpawnIllahiNotifier %s, SpawnSecretNotifier %s, HPBossNotifier %s, ClimateNotifier %s, ESP Boss %s, ESP Illahi %s, ESP Secret %s, Skill1 %s, Skill2 %s, Skill3 %s, Skill4 %s, Skill5 %s.",
-        autoFarm and "ON" or "OFF",
-        autoEquip and "ON" or "OFF",
-        autoFarmV2 and "ON" or "OFF",
-        autoFarmV2Mode,
-        autoFarmV2TapInterval,
-        spawnBossNotifier and "ON" or "OFF",
-        spawnIllahiNotifier and "ON" or "OFF",
-        spawnSecretNotifier and "ON" or "OFF",
-        hpBossNotifier and "ON" or "OFF",
-        climateTimeNotifier and "ON" or "OFF",
-        espBoss and "ON" or "OFF",
-        espIllahi and "ON" or "OFF",
-        espSecret and "ON" or "OFF",
-        autoSkill1 and "ON" or "OFF",
-        autoSkill2 and "ON" or "OFF",
-        autoSkill3 and "ON" or "OFF",
-        autoSkill4 and "ON" or "OFF",
-        autoSkill5 and "ON" or "OFF"
-    )
+    -- sengaja dikosongkan, karena teks status panjang di UI sudah dihapus
 end
 
-------------------- UI BUILDERS (SPEAR / SPAWN / ESP) -------------------
+------------------- UI BUILDERS -------------------
+local function applySkillFromBox(slotIndex, box, descLabel)
+    local raw = box.Text or ""
+    raw = raw:gsub("^%s+", ""):gsub("%s+$", "")
+    if raw == "" then
+        -- kosongkan -> revert ke nama sebelumnya
+    else
+        local key = normalizeSkillKey(raw)
+        local foundId = SKILL_NAME_TO_ID[key]
+
+        if not foundId and raw:match("^Skill%d+") then
+            local num = tonumber(raw:match("(%d+)")) or 0
+            if num > 0 and num <= 10 then
+                local candidate = string.format("Skill%02d", num)
+                if SKILL_ID_TO_NAME[candidate] then
+                    foundId = candidate
+                end
+            end
+        end
+
+        if foundId then
+            local uiName = getSkillUiNameFromId(foundId)
+
+            if slotIndex == 1 then
+                autoSkill1Id = foundId
+                autoSkill1Name = uiName
+            elseif slotIndex == 2 then
+                autoSkill2Id = foundId
+                autoSkill2Name = uiName
+            elseif slotIndex == 3 then
+                autoSkill3Id = foundId
+                autoSkill3Name = uiName
+            elseif slotIndex == 4 then
+                autoSkill4Id = foundId
+                autoSkill4Name = uiName
+            elseif slotIndex == 5 then
+                autoSkill5Id = foundId
+                autoSkill5Name = uiName
+            end
+
+            box.Text = uiName
+            if descLabel then
+                descLabel.Text = string.format("Skill %d: %s", slotIndex, uiName)
+            end
+            return
+        else
+            notify("Spear Fishing", "Nama skill tidak dikenali, gunakan Thunder / Cold Snap / dll.", 4)
+        end
+    end
+
+    -- revert jika gagal
+    local uiName
+    if slotIndex == 1 then
+        uiName = autoSkill1Name
+    elseif slotIndex == 2 then
+        uiName = autoSkill2Name
+    elseif slotIndex == 3 then
+        uiName = autoSkill3Name
+    elseif slotIndex == 4 then
+        uiName = autoSkill4Name
+    elseif slotIndex == 5 then
+        uiName = autoSkill5Name
+    end
+    box.Text = uiName or ""
+    if descLabel and uiName then
+        descLabel.Text = string.format("Skill %d: %s", slotIndex, uiName)
+    end
+end
+
 local function buildSpearControlsCard(bodyScroll)
     local controlCard = createCard(
         bodyScroll,
-        "Spear Controls",
-        "Auto Skill 1~5 + Settup Skill",
+        "Spear Auto Skill",
+        "Auto Skill 1~5 + custom nama skill (Thunder, Cold Snap, dll).",
         1,
         260
     )
@@ -2717,8 +2586,8 @@ local function buildSpearControlsCard(bodyScroll)
     controlsScroll.Parent = controlCard
     controlsScroll.BackgroundTransparency = 1
     controlsScroll.BorderSizePixel = 0
-    controlsScroll.Position = UDim2.new(0, 0, 0, 40)
-    controlsScroll.Size = UDim2.new(1, 0, 1, -40)
+    controlsScroll.Position = UDim2.new(0, 0, 0, 52)    -- di bawah deskripsi
+    controlsScroll.Size = UDim2.new(1, 0, 1, -52)
     controlsScroll.ScrollBarThickness = 4
     controlsScroll.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
     controlsScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -2740,135 +2609,80 @@ local function buildSpearControlsCard(bodyScroll)
         controlsScroll.CanvasSize = UDim2.new(0, 0, 0, controlsLayout.AbsoluteContentSize.Y + 8)
     end))
 
-    local autoFarmButton,   updateAutoFarmUI   = createToggleButton(controlsScroll, "AutoFarm Fish", autoFarm)
-    local autoEquipButton,  updateAutoEquipUI  = createToggleButton(controlsScroll, "AutoEquip Harpoon", autoEquip)
-    local createdAutoFarmV2Button, updateAutoFarmV2UI = createToggleButton(controlsScroll, "AutoFarm Fish V2", autoFarmV2)
-    autoFarmV2Button = createdAutoFarmV2Button
+    -- Row builder (Toggle + TextBox + label deskripsi)
+    local function createSkillRow(slotIndex, autoFlag, getName)
+        local row = Instance.new("Frame")
+        row.Name = "SkillRow" .. tostring(slotIndex)
+        row.Parent = controlsScroll
+        row.BackgroundTransparency = 1
+        row.BorderSizePixel = 0
+        row.Size = UDim2.new(1, 0, 0, 32)
 
-    local v2ModeButton = Instance.new("TextButton")
-    v2ModeButton.Name = "AutoFarmV2ModeButton"
-    v2ModeButton.Parent = controlsScroll
-    v2ModeButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    v2ModeButton.BorderSizePixel = 0
-    v2ModeButton.AutoButtonColor = true
-    v2ModeButton.Font = Enum.Font.Gotham
-    v2ModeButton.TextSize = 11
-    v2ModeButton.TextColor3 = Color3.fromRGB(220, 220, 220)
-    v2ModeButton.TextWrapped = true
-    v2ModeButton.Size = UDim2.new(1, 0, 0, 26)
+        local toggleButton, updateToggleUI = createToggleButton(row, "Auto Skill " .. tostring(slotIndex), autoFlag)
+        toggleButton.Size = UDim2.new(0.45, -4, 1, 0)
+        toggleButton.Position = UDim2.new(0, 0, 0, 0)
 
-    local v2ModeCorner = Instance.new("UICorner")
-    v2ModeCorner.CornerRadius = UDim.new(0, 8)
-    v2ModeCorner.Parent = v2ModeButton
+        local box = Instance.new("TextBox")
+        box.Name = "SkillNameBox" .. tostring(slotIndex)
+        box.Parent = row
+        box.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+        box.BorderSizePixel = 0
+        box.Font = Enum.Font.GothamSemibold
+        box.TextSize = 11
+        box.TextColor3 = Color3.fromRGB(230, 230, 230)
+        box.ClearTextOnFocus = false
+        box.TextXAlignment = Enum.TextXAlignment.Left
+        box.TextYAlignment = Enum.TextYAlignment.Center
+        box.Position = UDim2.new(0.48, 0, 0, 0)
+        box.Size = UDim2.new(0.52, 0, 1, 0)
+        box.Text = getName()
 
-    local function updateV2ModeButton()
-        v2ModeButton.Text = "Mode AutoFarm V2: " .. autoFarmV2Mode .. " Trackpad"
-    end
-    updateV2ModeButton()
+        local boxCorner = Instance.new("UICorner")
+        boxCorner.CornerRadius = UDim.new(0, 6)
+        boxCorner.Parent = box
 
-    local tapSpeedFrame = Instance.new("Frame")
-    tapSpeedFrame.Name = "TapSpeedFrame"
-    tapSpeedFrame.Parent = controlsScroll
-    tapSpeedFrame.BackgroundTransparency = 1
-    tapSpeedFrame.BorderSizePixel = 0
-    tapSpeedFrame.Size = UDim2.new(1, 0, 0, 28)
+        local desc = Instance.new("TextLabel")
+        desc.Name = "SkillDesc" .. tostring(slotIndex)
+        desc.Parent = controlsScroll
+        desc.BackgroundTransparency = 1
+        desc.Font = Enum.Font.Gotham
+        desc.TextSize = 11
+        desc.TextColor3 = Color3.fromRGB(185, 185, 185)
+        desc.TextXAlignment = Enum.TextXAlignment.Left
+        desc.TextWrapped = true
+        desc.Size = UDim2.new(1, 0, 0, 18)
+        desc.Text = string.format("Skill %d: %s", slotIndex, getName())
 
-    local tapSpeedLabel = Instance.new("TextLabel")
-    tapSpeedLabel.Name = "TapSpeedLabel"
-    tapSpeedLabel.Parent = tapSpeedFrame
-    tapSpeedLabel.BackgroundTransparency = 1
-    tapSpeedLabel.Font = Enum.Font.Gotham
-    tapSpeedLabel.TextSize = 11
-    tapSpeedLabel.TextColor3 = Color3.fromRGB(185, 185, 185)
-    tapSpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
-    tapSpeedLabel.Text = "AutoFarm V2 Tap Interval (detik):"
-    tapSpeedLabel.Position = UDim2.new(0, 0, 0, 0)
-    tapSpeedLabel.Size = UDim2.new(0.6, 0, 1, 0)
+        table.insert(connections, toggleButton.MouseButton1Click:Connect(function()
+            if slotIndex == 1 then
+                autoSkill1 = not autoSkill1
+                updateToggleUI(autoSkill1)
+            elseif slotIndex == 2 then
+                autoSkill2 = not autoSkill2
+                updateToggleUI(autoSkill2)
+            elseif slotIndex == 3 then
+                autoSkill3 = not autoSkill3
+                updateToggleUI(autoSkill3)
+            elseif slotIndex == 4 then
+                autoSkill4 = not autoSkill4
+                updateToggleUI(autoSkill4)
+            elseif slotIndex == 5 then
+                autoSkill5 = not autoSkill5
+                updateToggleUI(autoSkill5)
+            end
+            updateStatusLabel()
+        end))
 
-    local tapSpeedBox = Instance.new("TextBox")
-    tapSpeedBox.Name = "TapSpeedBox"
-    tapSpeedBox.Parent = tapSpeedFrame
-    tapSpeedBox.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    tapSpeedBox.BorderSizePixel = 0
-    tapSpeedBox.Font = Enum.Font.GothamSemibold
-    tapSpeedBox.TextSize = 11
-    tapSpeedBox.TextColor3 = Color3.fromRGB(230, 230, 230)
-    tapSpeedBox.ClearTextOnFocus = false
-    tapSpeedBox.TextXAlignment = Enum.TextXAlignment.Center
-    tapSpeedBox.Position = UDim2.new(0.62, 0, 0, 0)
-    tapSpeedBox.Size = UDim2.new(0.38, 0, 1, 0)
-    tapSpeedBox.Text = string.format("%.2f", autoFarmV2TapInterval)
-
-    local tapSpeedCorner = Instance.new("UICorner")
-    tapSpeedCorner.CornerRadius = UDim.new(0, 6)
-    tapSpeedCorner.Parent = tapSpeedBox
-
-    local function applyTapSpeedFromBox()
-        local raw = tapSpeedBox.Text or ""
-        raw = raw:gsub(",", ".")
-        local num = tonumber(raw)
-        if not num then
-            tapSpeedBox.Text = string.format("%.2f", autoFarmV2TapInterval)
-            return
-        end
-        if num < TAP_INTERVAL_MIN then
-            num = TAP_INTERVAL_MIN
-        elseif num > TAP_INTERVAL_MAX then
-            num = TAP_INTERVAL_MAX
-        end
-        autoFarmV2TapInterval = num
-        tapSpeedBox.Text = string.format("%.2f", autoFarmV2TapInterval)
-        updateStatusLabel()
+        table.insert(connections, box.FocusLost:Connect(function()
+            applySkillFromBox(slotIndex, box, desc)
+        end))
     end
 
-    table.insert(connections, tapSpeedBox.FocusLost:Connect(function()
-        applyTapSpeedFromBox()
-    end))
-
-    local autoSkill1Button, updateAutoSkill1UI = createToggleButton(controlsScroll, "Auto Skill 1", autoSkill1)
-    local autoSkill2Button, updateAutoSkill2UI = createToggleButton(controlsScroll, "Auto Skill 2", autoSkill2)
-    local autoSkill3Button, updateAutoSkill3UI = createToggleButton(controlsScroll, "Auto Skill 3", autoSkill3)
-    local autoSkill4Button, updateAutoSkill4UI = createToggleButton(controlsScroll, "Auto Skill 4", autoSkill4)
-    local autoSkill5Button, updateAutoSkill5UI = createToggleButton(controlsScroll, "Auto Skill 5", autoSkill5)
-
-    skillInfo1 = Instance.new("TextLabel")
-    skillInfo1.Name = "Skill1Info"
-    skillInfo1.Parent = controlsScroll
-    skillInfo1.BackgroundTransparency = 1
-    skillInfo1.Font = Enum.Font.Gotham
-    skillInfo1.TextSize = 11
-    skillInfo1.TextColor3 = Color3.fromRGB(185, 185, 185)
-    skillInfo1.TextXAlignment = Enum.TextXAlignment.Left
-    skillInfo1.TextWrapped = true
-    skillInfo1.Size = UDim2.new(1, 0, 0, 18)
-    skillInfo1.Text = skill1BaseInfoText
-
-    skillInfo2 = Instance.new("TextLabel")
-    skillInfo2.Name = "Skill2Info"
-    skillInfo2.Parent = controlsScroll
-    skillInfo2.BackgroundTransparency = 1
-    skillInfo2.Font = Enum.Font.Gotham
-    skillInfo2.TextSize = 11
-    skillInfo2.TextColor3 = Color3.fromRGB(185, 185, 185)
-    skillInfo2.TextXAlignment = Enum.TextXAlignment.Left
-    skillInfo2.TextWrapped = true
-    skillInfo2.Size = UDim2.new(1, 0, 0, 30)
-    skillInfo2.Text = skill2BaseInfoText
-
-    statusLabel = Instance.new("TextLabel")
-    statusLabel.Name = "Status"
-    statusLabel.Parent = controlsScroll
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Font = Enum.Font.Gotham
-    statusLabel.TextSize = 11
-    statusLabel.TextColor3 = Color3.fromRGB(185, 185, 185)
-    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
-    statusLabel.TextWrapped = true
-    statusLabel.Size = UDim2.new(1, 0, 0, 70)
-    statusLabel.Text = ""
-
-    updateStatusLabel()
-    updateSkillCooldownUI()
+    createSkillRow(1, autoSkill1, function() return autoSkill1Name end)
+    createSkillRow(2, autoSkill2, function() return autoSkill2Name end)
+    createSkillRow(3, autoSkill3, function() return autoSkill3Name end)
+    createSkillRow(4, autoSkill4, function() return autoSkill4Name end)
+    createSkillRow(5, autoSkill5, function() return autoSkill5Name end)
 
     local sellButton = Instance.new("TextButton")
     sellButton.Name = "SellAllButton"
@@ -2886,64 +2700,6 @@ local function buildSpearControlsCard(bodyScroll)
     sellCorner.CornerRadius = UDim.new(0, 8)
     sellCorner.Parent = sellButton
 
-    -- events
-    table.insert(connections, autoFarmButton.MouseButton1Click:Connect(function()
-        autoFarm = not autoFarm
-        updateAutoFarmUI(autoFarm)
-        updateStatusLabel()
-    end))
-
-    table.insert(connections, autoEquipButton.MouseButton1Click:Connect(function()
-        autoEquip = not autoEquip
-        updateAutoEquipUI(autoEquip)
-        if autoEquip then
-            ensureHarpoonEquipped()
-        end
-        updateStatusLabel()
-    end))
-
-    table.insert(connections, createdAutoFarmV2Button.MouseButton1Click:Connect(function()
-        autoFarmV2 = not autoFarmV2
-        updateAutoFarmV2UI(autoFarmV2)
-        updateStatusLabel()
-    end))
-
-    table.insert(connections, v2ModeButton.MouseButton1Click:Connect(function()
-        autoFarmV2Mode = (autoFarmV2Mode == "Center") and "Left" or "Center"
-        updateV2ModeButton()
-        updateStatusLabel()
-    end))
-
-    table.insert(connections, autoSkill1Button.MouseButton1Click:Connect(function()
-        autoSkill1 = not autoSkill1
-        updateAutoSkill1UI(autoSkill1)
-        updateStatusLabel()
-    end))
-
-    table.insert(connections, autoSkill2Button.MouseButton1Click:Connect(function()
-        autoSkill2 = not autoSkill2
-        updateAutoSkill2UI(autoSkill2)
-        updateStatusLabel()
-    end))
-
-    table.insert(connections, autoSkill3Button.MouseButton1Click:Connect(function()
-        autoSkill3 = not autoSkill3
-        updateAutoSkill3UI(autoSkill3)
-        updateStatusLabel()
-    end))
-
-    table.insert(connections, autoSkill4Button.MouseButton1Click:Connect(function()
-        autoSkill4 = not autoSkill4
-        updateAutoSkill4UI(autoSkill4)
-        updateStatusLabel()
-    end))
-
-    table.insert(connections, autoSkill5Button.MouseButton1Click:Connect(function()
-        autoSkill5 = not autoSkill5
-        updateAutoSkill5UI(autoSkill5)
-        updateStatusLabel()
-    end))
-
     table.insert(connections, sellButton.MouseButton1Click:Connect(function()
         sellAllFish()
     end))
@@ -2953,9 +2709,9 @@ local function buildSpawnControlsCard(bodyScroll)
     local spawnCard = createCard(
         bodyScroll,
         "Spawn Controls",
-        "Pengaturan Notifier Spawn (Boss, HP Boss, Illahi, Secret, Climate) global + per ikan.",
+        "Pengaturan Notifier Spawn (Boss, HP Boss, Divine, Secret, Climate) global + per ikan.",
         2,
-        440
+        460
     )
 
     local spawnScroll = Instance.new("ScrollingFrame")
@@ -2963,8 +2719,8 @@ local function buildSpawnControlsCard(bodyScroll)
     spawnScroll.Parent = spawnCard
     spawnScroll.BackgroundTransparency = 1
     spawnScroll.BorderSizePixel = 0
-    spawnScroll.Position = UDim2.new(0, 0, 0, 40)
-    spawnScroll.Size = UDim2.new(1, 0, 1, -40)
+    spawnScroll.Position = UDim2.new(0, 0, 0, 52)   -- di bawah deskripsi
+    spawnScroll.Size = UDim2.new(1, 0, 1, -52)
     spawnScroll.ScrollBarThickness = 4
     spawnScroll.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
     spawnScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -2986,6 +2742,56 @@ local function buildSpawnControlsCard(bodyScroll)
         spawnScroll.CanvasSize = UDim2.new(0, 0, 0, spawnLayout.AbsoluteContentSize.Y + 8)
     end))
 
+    -- Input box webhook publik
+    local webhookFrame = Instance.new("Frame")
+    webhookFrame.Name = "WebhookFrame"
+    webhookFrame.Parent = spawnScroll
+    webhookFrame.BackgroundTransparency = 1
+    webhookFrame.BorderSizePixel = 0
+    webhookFrame.Size = UDim2.new(1, 0, 0, 30)
+
+    local webhookLabel = Instance.new("TextLabel")
+    webhookLabel.Name = "WebhookLabel"
+    webhookLabel.Parent = webhookFrame
+    webhookLabel.BackgroundTransparency = 1
+    webhookLabel.Font = Enum.Font.Gotham
+    webhookLabel.TextSize = 11
+    webhookLabel.TextColor3 = Color3.fromRGB(185, 185, 185)
+    webhookLabel.TextXAlignment = Enum.TextXAlignment.Left
+    webhookLabel.Position = UDim2.new(0, 0, 0, 0)
+    webhookLabel.Size = UDim2.new(0.42, 0, 1, 0)
+    webhookLabel.Text = "Discord Webhook (optional):"
+
+    local webhookBox = Instance.new("TextBox")
+    webhookBox.Name = "WebhookBox"
+    webhookBox.Parent = webhookFrame
+    webhookBox.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    webhookBox.BorderSizePixel = 0
+    webhookBox.Font = Enum.Font.GothamSemibold
+    webhookBox.TextSize = 11
+    webhookBox.TextColor3 = Color3.fromRGB(230, 230, 230)
+    webhookBox.ClearTextOnFocus = false
+    webhookBox.TextXAlignment = Enum.TextXAlignment.Left
+    webhookBox.Position = UDim2.new(0.44, 0, 0, 0)
+    webhookBox.Size = UDim2.new(0.56, 0, 1, 0)
+    webhookBox.PlaceholderText = "https://discord.com/api/webhooks/..."
+    webhookBox.Text = ""
+
+    local webhookCorner = Instance.new("UICorner")
+    webhookCorner.CornerRadius = UDim.new(0, 6)
+    webhookCorner.Parent = webhookBox
+
+    table.insert(connections, webhookBox.FocusLost:Connect(function()
+        local raw = webhookBox.Text or ""
+        raw = raw:gsub("^%s+", ""):gsub("%s+$", "")
+        userWebhookUrl = raw
+        if raw ~= "" then
+            notify("Spear Fishing", "Webhook publik diset. Semua notifier -> ExHub Notifier.", 3)
+        else
+            notify("Spear Fishing", "Webhook publik dikosongkan. Kembali ke webhook default.", 3)
+        end
+    end))
+
     local spawnBossToggleButton =
         select(1, createToggleButton(spawnScroll, "Spawn Boss Notifier", spawnBossNotifier))
 
@@ -2996,7 +2802,7 @@ local function buildSpawnControlsCard(bodyScroll)
         select(1, createToggleButton(spawnScroll, "Climate Time Notifier", climateTimeNotifier))
 
     local spawnIllahiToggleButton =
-        select(1, createToggleButton(spawnScroll, "Spawn Illahi Notifier", spawnIllahiNotifier))
+        select(1, createToggleButton(spawnScroll, "Spawn Divine Notifier", spawnIllahiNotifier))
 
     local spawnSecretToggleButton =
         select(1, createToggleButton(spawnScroll, "Spawn Secret Notifier", spawnSecretNotifier))
@@ -3024,9 +2830,9 @@ local function buildSpawnControlsCard(bodyScroll)
 
     table.insert(connections, spawnIllahiToggleButton.MouseButton1Click:Connect(function()
         spawnIllahiNotifier = not spawnIllahiNotifier
-        setToggleButtonState(spawnIllahiToggleButton, "Spawn Illahi Notifier", spawnIllahiNotifier)
+        setToggleButtonState(spawnIllahiToggleButton, "Spawn Divine Notifier", spawnIllahiNotifier)
         updateStatusLabel()
-        notify("Spear Fishing", "Spawn Illahi Notifier: " .. (spawnIllahiNotifier and "ON" or "OFF"), 2)
+        notify("Spear Fishing", "Spawn Divine Notifier: " .. (spawnIllahiNotifier and "ON" or "OFF"), 2)
     end))
 
     table.insert(connections, spawnSecretToggleButton.MouseButton1Click:Connect(function()
@@ -3037,7 +2843,7 @@ local function buildSpawnControlsCard(bodyScroll)
     end))
 
     local illahiLabel = Instance.new("TextLabel")
-    illahiLabel.Name = "IllahiLabel"
+    illahiLabel.Name = "DivineLabel"
     illahiLabel.Parent = spawnScroll
     illahiLabel.BackgroundTransparency = 1
     illahiLabel.Font = Enum.Font.GothamSemibold
@@ -3045,14 +2851,14 @@ local function buildSpawnControlsCard(bodyScroll)
     illahiLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
     illahiLabel.TextXAlignment = Enum.TextXAlignment.Left
     illahiLabel.Size = UDim2.new(1, 0, 0, 18)
-    illahiLabel.Text = "Illahi Notifier per Ikan (Nether Island):"
+    illahiLabel.Text = "Divine Notifier per Ikan (Nether Island):"
 
     for _, fishId in ipairs(ILLAHI_ORDER) do
         illahiFishEnabled[fishId] = illahiFishEnabled[fishId] ~= false
 
         local btn = select(1, createToggleButton(
             spawnScroll,
-            "Notifier Illahi " .. ((ILLAHI_FISH_DEFS[fishId] and ILLAHI_FISH_DEFS[fishId].name) or fishId),
+            "Notifier Divine " .. ((ILLAHI_FISH_DEFS[fishId] and ILLAHI_FISH_DEFS[fishId].name) or fishId),
             illahiFishEnabled[fishId]
         ))
 
@@ -3060,7 +2866,7 @@ local function buildSpawnControlsCard(bodyScroll)
             local newState = not illahiFishEnabled[fishId]
             illahiFishEnabled[fishId] = newState
             local def = ILLAHI_FISH_DEFS[fishId]
-            local labelText = "Notifier Illahi " .. ((def and def.name) or fishId)
+            local labelText = "Notifier Divine " .. ((def and def.name) or fishId)
             setToggleButtonState(btn, labelText, newState)
         end))
     end
@@ -3099,7 +2905,7 @@ local function buildEspCard(bodyScroll)
     local espCard = createCard(
         bodyScroll,
         "ESP Fish Controls",
-        "ESP antena kuning dari karakter ke Boss/Illahi/Secret + nama dan jarak (stud).",
+        "ESP antena kuning dari karakter ke Boss/Divine/Secret + nama dan jarak (stud).",
         3,
         420
     )
@@ -3109,8 +2915,8 @@ local function buildEspCard(bodyScroll)
     espScroll.Parent = espCard
     espScroll.BackgroundTransparency = 1
     espScroll.BorderSizePixel = 0
-    espScroll.Position = UDim2.new(0, 0, 0, 40)
-    espScroll.Size = UDim2.new(1, 0, 1, -40)
+    espScroll.Position = UDim2.new(0, 0, 0, 52)  -- di bawah deskripsi
+    espScroll.Size = UDim2.new(1, 0, 1, -52)
     espScroll.ScrollBarThickness = 4
     espScroll.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
     espScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -3136,7 +2942,7 @@ local function buildEspCard(bodyScroll)
         select(1, createToggleButton(espScroll, "ESP Boss", espBoss))
 
     local espIllahiButton =
-        select(1, createToggleButton(espScroll, "ESP Illahi", espIllahi))
+        select(1, createToggleButton(espScroll, "ESP Divine", espIllahi))
 
     local espSecretButton =
         select(1, createToggleButton(espScroll, "ESP Secret", espSecret))
@@ -3151,10 +2957,10 @@ local function buildEspCard(bodyScroll)
 
     table.insert(connections, espIllahiButton.MouseButton1Click:Connect(function()
         espIllahi = not espIllahi
-        setToggleButtonState(espIllahiButton, "ESP Illahi", espIllahi)
+        setToggleButtonState(espIllahiButton, "ESP Divine", espIllahi)
         refreshAllEsp()
         updateStatusLabel()
-        notify("Spear Fishing", "ESP Illahi: " .. (espIllahi and "ON" or "OFF"), 2)
+        notify("Spear Fishing", "ESP Divine: " .. (espIllahi and "ON" or "OFF"), 2)
     end))
 
     table.insert(connections, espSecretButton.MouseButton1Click:Connect(function()
@@ -3166,7 +2972,7 @@ local function buildEspCard(bodyScroll)
     end))
 
     local espIllahiLabel = Instance.new("TextLabel")
-    espIllahiLabel.Name = "ESPIllahiLabel"
+    espIllahiLabel.Name = "ESPDivineLabel"
     espIllahiLabel.Parent = espScroll
     espIllahiLabel.BackgroundTransparency = 1
     espIllahiLabel.Font = Enum.Font.GothamSemibold
@@ -3174,14 +2980,14 @@ local function buildEspCard(bodyScroll)
     espIllahiLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
     espIllahiLabel.TextXAlignment = Enum.TextXAlignment.Left
     espIllahiLabel.Size = UDim2.new(1, 0, 0, 18)
-    espIllahiLabel.Text = "ESP Illahi per Ikan (Nether Island):"
+    espIllahiLabel.Text = "ESP Divine per Ikan (Nether Island):"
 
     for _, fishId in ipairs(ILLAHI_ORDER) do
         espIllahiFishEnabled[fishId] = espIllahiFishEnabled[fishId] == true
 
         local btn = select(1, createToggleButton(
             espScroll,
-            "ESP Illahi " .. ((ILLAHI_FISH_DEFS[fishId] and ILLAHI_FISH_DEFS[fishId].name) or fishId),
+            "ESP Divine " .. ((ILLAHI_FISH_DEFS[fishId] and ILLAHI_FISH_DEFS[fishId].name) or fishId),
             espIllahiFishEnabled[fishId]
         ))
 
@@ -3189,7 +2995,7 @@ local function buildEspCard(bodyScroll)
             local newState = not espIllahiFishEnabled[fishId]
             espIllahiFishEnabled[fishId] = newState
             local def = ILLAHI_FISH_DEFS[fishId]
-            local labelText = "ESP Illahi " .. ((def and def.name) or fishId)
+            local labelText = "ESP Divine " .. ((def and def.name) or fishId)
             setToggleButtonState(btn, labelText, newState)
             refreshAllEsp()
             updateStatusLabel()
@@ -3239,23 +3045,6 @@ end
 
 buildAllUI()
 
-------------------- HOTKEY G: TOGGLE AUTOFARM V2 -------------------
-local function onInputBegan(input, processed)
-    if processed then return end
-    if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-    if input.KeyCode ~= Enum.KeyCode.G then return end
-    if UserInputService:GetFocusedTextBox() then return end
-
-    autoFarmV2 = not autoFarmV2
-    if autoFarmV2Button then
-        setToggleButtonState(autoFarmV2Button, "AutoFarm Fish V2", autoFarmV2)
-    end
-    updateStatusLabel()
-    notify("Spear Fishing", "AutoFarm V2: " .. (autoFarmV2 and "ON" or "OFF") .. " (Key G)", 2)
-end
-
-table.insert(connections, UserInputService.InputBegan:Connect(onInputBegan))
-
 ------------------- INIT WATCHERS -------------------
 initToolsDataWatcher()
 initWorldBossNotifier()
@@ -3268,7 +3057,6 @@ table.insert(connections, LocalPlayer.CharacterAdded:Connect(function(newChar)
     character = newChar
     task.delay(1, function()
         if alive then
-            ensureHarpoonEquipped()
             refreshHarpoonOwnership()
             refreshAllEsp()
         end
@@ -3301,48 +3089,14 @@ if backpack then
 end
 
 ------------------- BACKGROUND LOOPS -------------------
-task.spawn(function()
-    while alive do
-        if autoEquip then
-            pcall(ensureHarpoonEquipped)
-        end
-        task.wait(0.3)
-    end
-end)
-
-task.spawn(function()
-    while alive do
-        if autoFarm then
-            pcall(doFireHarpoon)
-        end
-        task.wait(0.1)
-    end
-end)
-
-task.spawn(function()
-    while alive do
-        if autoFarmV2 then
-            pcall(doAutoTapV2)
-            local interval = autoFarmV2TapInterval
-            if interval < TAP_INTERVAL_MIN then
-                interval = TAP_INTERVAL_MIN
-            elseif interval > TAP_INTERVAL_MAX then
-                interval = TAP_INTERVAL_MAX
-            end
-            task.wait(interval)
-        else
-            task.wait(0.2)
-        end
-    end
-end)
-
+-- Loop Auto Skill 1 & 2 (sequence)
 task.spawn(function()
     while alive do
         if autoSkill1 or autoSkill2 then
             if autoSkill1 and autoSkill2 then
                 pcall(fireSkill1)
                 local t = 0
-                while t < SKILL_SEQUENCE_GAP and alive and autoSkill1 and autoSkill2 do
+                while t < 0.6 and alive and autoSkill1 and autoSkill2 do
                     task.wait(0.2)
                     t = t + 0.2
                 end
@@ -3350,7 +3104,7 @@ task.spawn(function()
                 if autoSkill1 and autoSkill2 then
                     pcall(fireSkill2)
                     local t2 = 0
-                    while t2 < SKILL_SEQUENCE_GAP and alive and autoSkill1 and autoSkill2 do
+                    while t2 < 0.6 and alive and autoSkill1 and autoSkill2 do
                         task.wait(0.2)
                         t2 = t2 + 0.2
                     end
@@ -3373,6 +3127,7 @@ task.spawn(function()
     end
 end)
 
+-- Loop Auto Skill 3-5
 task.spawn(function()
     while alive do
         if autoSkill3 or autoSkill4 or autoSkill5 then
@@ -3403,13 +3158,7 @@ task.spawn(function()
     end
 end)
 
-task.spawn(function()
-    while alive do
-        pcall(updateSkillCooldownUI)
-        task.wait(0.2)
-    end
-end)
-
+-- Loop update ESP distance
 task.spawn(function()
     while alive do
         pcall(updateEspTextDistances)
@@ -3420,9 +3169,6 @@ end)
 ------------------- TAB CLEANUP -------------------
 _G.AxaHub.TabCleanup[tabId] = function()
     alive                 = false
-    autoFarm              = false
-    autoEquip             = false
-    autoFarmV2            = false
     autoSkill1            = false
     autoSkill2            = false
     autoSkill3            = false
