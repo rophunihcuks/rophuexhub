@@ -43,15 +43,15 @@ local climateTimeNotifier  = false     -- Climate Time Notifier (global)
 
 -- ESP
 local espBoss              = true      -- ESP Boss global (default ON)
-local espIllahi            = true      -- ESP Divine global (default OFF, label di UI = Divine)
-local espSecret            = true      -- ESP Secret global (default OFF)
+local espIllahi            = false     -- ESP Divine global (default OFF, label di UI = Divine)
+local espSecret            = false     -- ESP Secret global (default OFF)
 
 -- Auto Skill (slot ON/OFF)
 local autoSkill1      = true
-local autoSkill2      = true
-local autoSkill3      = true
-local autoSkill4      = true
-local autoSkill5      = true
+local autoSkill2      = false
+local autoSkill3      = false
+local autoSkill4      = false
+local autoSkill5      = false
 
 -- Mapping Skill ID -> Nama untuk UI
 local SKILL_ID_TO_NAME = {
@@ -111,15 +111,24 @@ local autoSkill4Name = getSkillUiNameFromId(autoSkill4Id)
 local autoSkill5Name = getSkillUiNameFromId(autoSkill5Id)
 
 -- Webhook umum (optional, diisi user dari UI)
-local userWebhookUrl = ""          -- jika kosong -> pakai webhook default di script
+local userWebhookUrl = ""          -- jika kosong -> hanya pakai webhook default di script
+
+local function getUserWebhookTrimmed()
+    if type(userWebhookUrl) ~= "string" then
+        return nil
+    end
+    local url = userWebhookUrl:gsub("^%s+", ""):gsub("%s+$", "")
+    if url == "" then
+        return nil
+    end
+    return url
+end
 
 local character       = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local backpack        = LocalPlayer:FindFirstChildOfClass("Backpack") or LocalPlayer:WaitForChild("Backpack")
 
 local connections     = {}
 local ToolsData       = nil
-local SpearFishData   = nil
-local spearInitTried  = false
 
 -- UI globals (bagian status/cooldown dihilangkan, tetap disiapkan variabel bila perlu)
 local statusLabel            = nil    -- tidak dipakai lagi (UI status panjang dihapus)
@@ -606,7 +615,7 @@ local function createMainLayout()
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
     title.Position = UDim2.new(0, 14, 0, 4)
     title.Size = UDim2.new(1, -28, 0, 20)
-    title.Text = "Spear Fishing V1.3"
+    title.Text = "Spear Fishing PRO++ v1.1"
 
     local subtitle = Instance.new("TextLabel")
     subtitle.Name = "Subtitle"
@@ -618,7 +627,7 @@ local function createMainLayout()
     subtitle.TextColor3 = Color3.fromRGB(180, 180, 180)
     subtitle.Position = UDim2.new(0, 14, 0, 22)
     subtitle.Size = UDim2.new(1, -28, 0, 18)
-    subtitle.Text = "Auto Skill + Notif Spawn Boss/HP+Divine + ESP Fish + Buy Harpoon."
+    subtitle.Text = "Auto Skill + Notif Spawn Boss & HP + ESP Fish + Buy Harpoon."
 
     local bodyScroll = Instance.new("ScrollingFrame")
     bodyScroll.Name = "BodyScroll"
@@ -750,143 +759,6 @@ local function createToggleButton(parent, labelText, initialState)
     return button, update
 end
 
-------------------- SPEAR FISH DATA + SELL ALL -------------------
-local function ensureSpearFishData()
-    if SpearFishData or spearInitTried or not alive then
-        return SpearFishData
-    end
-    spearInitTried = true
-
-    local waitFn
-    local okFn, fn = pcall(function()
-        return shared and shared.WaitPlayerData
-    end)
-    if okFn and typeof(fn) == "function" then
-        waitFn = fn
-    end
-
-    if waitFn then
-        local keys = {
-            "SpearFish",
-            "Spearfish",
-            "SpearFishing",
-            "SpearFishBag",
-            "FishSpear",
-            "FishSpearBag",
-        }
-        for _, key in ipairs(keys) do
-            local ok, result = pcall(function()
-                return waitFn(key)
-            end)
-            if ok and result and typeof(result) == "Instance" then
-                SpearFishData = result
-                break
-            end
-        end
-    end
-
-    if not SpearFishData then
-        local keys2 = {
-            "SpearFish",
-            "Spearfish",
-            "SpearFishBag",
-            "FishSpear",
-            "FishBag",
-        }
-        for _, name in ipairs(keys2) do
-            local inst = LocalPlayer:FindFirstChild(name)
-            if inst and inst:IsA("Folder") then
-                SpearFishData = inst
-                break
-            end
-        end
-    end
-
-    return SpearFishData
-end
-
-local function collectAllSpearFishUIDs()
-    local data = ensureSpearFishData()
-    if not data then
-        return nil
-    end
-
-    local list = {}
-
-    for _, child in ipairs(data:GetChildren()) do
-        local uidValue
-
-        local attrUID = child:GetAttribute("UID")
-        if attrUID ~= nil then
-            uidValue = attrUID
-        else
-            local uidObj = child:FindFirstChild("UID")
-            if uidObj and uidObj.Value then
-                uidValue = uidObj.Value
-            end
-        end
-
-        if uidValue == nil then
-            if #child.Name >= 12 and tonumber(child.Name) then
-                uidValue = child.Name
-            end
-        end
-
-        if uidValue ~= nil then
-            table.insert(list, tostring(uidValue))
-        end
-    end
-
-    if #list == 0 then
-        return nil
-    end
-
-    return list
-end
-
-local lastSellClock  = 0
-local SELL_COOLDOWN = 2
-
-local function sellAllFish()
-    if not FishRE then
-        notify("Spear Fishing", "Remote FishRE tidak ditemukan.", 4)
-        return
-    end
-
-    local now = os.clock()
-    if now - lastSellClock < SELL_COOLDOWN then
-        notify("Spear Fishing", "Sell All terlalu cepat, tunggu beberapa detik.", 2)
-        return
-    end
-
-    local uids = collectAllSpearFishUIDs()
-    if not uids or #uids == 0 then
-        lastSellClock = now
-        notify("Spear Fishing", "Tidak ada ikan spear yang bisa dijual.", 3)
-        return
-    end
-
-    lastSellClock = now
-
-    local args = {
-        [1] = "SellAll",
-        [2] = {
-            ["UIDs"] = uids
-        }
-    }
-
-    local ok, err = pcall(function()
-        FishRE:FireServer(unpack(args))
-    end)
-
-    if ok then
-        notify("Spear Fishing", "Sell All Fish (" .. tostring(#uids) .. " ekor) dikirim.", 3)
-    else
-        warn("[SpearFishing] SellAll gagal:", err)
-        notify("Spear Fishing", "Sell All gagal, cek Output/Console.", 4)
-    end
-end
-
 ------------------- AUTO SKILL 1 ~ 5 -------------------
 local function fireSkill(id)
     if not alive or not FishRE then
@@ -937,7 +809,7 @@ end
 ------------------- SPAWN BOSS / HP BOSS / CLIMATE WEBHOOK CORE -------------------
 local SPAWN_BOSS_WEBHOOK_URL   = "https://discord.com/api/webhooks/1435079884073341050/vEy2YQrpQQcN7pMs7isWqPtylN_AyJbzCAo_xDqM7enRacbIBp43SG1IR_hH-3j4zrfW"
 local SPAWN_BOSS_BOT_USERNAME  = "Spawn Boss Notifier"
-local SPAWN_BOSS_BOT_AVATAR    = "https://mylogo.edgeone.app/Logo%20Ax%20(NO%20BG).png"
+local SPAWN_BOSS_BOT_AVATAR    = "https://plain-chocolate-k7elvj0z6s.edgeone.app/ExLogo2.png"
 local DEFAULT_OWNER_DISCORD    = "<@1403052152691101857>"
 
 local HP_BOSS_WEBHOOK_URL      = "https://discord.com/api/webhooks/1456150372686237849/NTDxNaXWeJ1ytvzTo9vnmG5Qvbl6gsvZor4MMb9rWUwKT4fFkRQ9NbNiPsy7-TWogTmR"
@@ -978,13 +850,6 @@ local function getSpawnBossRequestFunc()
     end
 
     return spawnBossRequestFunc
-end
-
-local function resolveWebhook(defaultUrl, defaultUsername)
-    if userWebhookUrl and userWebhookUrl ~= "" then
-        return userWebhookUrl, PUBLIC_WEBHOOK_BOT_USERNAME, PUBLIC_WEBHOOK_BOT_AVATAR
-    end
-    return defaultUrl, defaultUsername, SPAWN_BOSS_BOT_AVATAR
 end
 
 local function sendWebhookGeneric(url, username, avatar, embed)
@@ -1034,13 +899,25 @@ local function sendWebhookGeneric(url, username, avatar, embed)
 end
 
 local function sendSpawnBossWebhookEmbed(embed)
-    local url, username, avatar = resolveWebhook(SPAWN_BOSS_WEBHOOK_URL, SPAWN_BOSS_BOT_USERNAME)
-    sendWebhookGeneric(url, username, avatar, embed)
+    -- selalu kirim ke webhook default owner
+    sendWebhookGeneric(SPAWN_BOSS_WEBHOOK_URL, SPAWN_BOSS_BOT_USERNAME, SPAWN_BOSS_BOT_AVATAR, embed)
+
+    -- jika user isi webhook publik, kirim salinan embed ke sana juga
+    local publicUrl = getUserWebhookTrimmed()
+    if publicUrl then
+        sendWebhookGeneric(publicUrl, PUBLIC_WEBHOOK_BOT_USERNAME, PUBLIC_WEBHOOK_BOT_AVATAR, embed)
+    end
 end
 
 local function sendHpBossWebhookEmbed(embed)
-    local url, username, avatar = resolveWebhook(HP_BOSS_WEBHOOK_URL, HP_BOSS_BOT_USERNAME)
-    sendWebhookGeneric(url, username, avatar, embed)
+    -- selalu kirim ke webhook default HP Boss
+    sendWebhookGeneric(HP_BOSS_WEBHOOK_URL, HP_BOSS_BOT_USERNAME, SPAWN_BOSS_BOT_AVATAR, embed)
+
+    -- jika user isi webhook publik, kirim salinan embed ke sana juga
+    local publicUrl = getUserWebhookTrimmed()
+    if publicUrl then
+        sendWebhookGeneric(publicUrl, PUBLIC_WEBHOOK_BOT_USERNAME, PUBLIC_WEBHOOK_BOT_AVATAR, embed)
+    end
 end
 
 ------------------- BOSS / HP HELPERS -------------------
@@ -1681,8 +1558,14 @@ local function initIllahiSpawnNotifier()
         local BOT_USERNAME = "Spawn Divine Notifier"
 
         local function sendDivineWebhookEmbed(embed)
-            local url, username, avatar = resolveWebhook(WEBHOOK_URL, BOT_USERNAME)
-            sendWebhookGeneric(url, username, avatar, embed)
+            -- selalu kirim ke webhook default Divine
+            sendWebhookGeneric(WEBHOOK_URL, BOT_USERNAME, SPAWN_BOSS_BOT_AVATAR, embed)
+
+            -- jika user isi webhook publik, kirim salinan embed ke sana juga
+            local publicUrl = getUserWebhookTrimmed()
+            if publicUrl then
+                sendWebhookGeneric(publicUrl, PUBLIC_WEBHOOK_BOT_USERNAME, PUBLIC_WEBHOOK_BOT_AVATAR, embed)
+            end
         end
 
         local function buildDivineSpawnEmbed(region, fishId, fishName)
@@ -1847,8 +1730,14 @@ local function initSecretSpawnNotifier()
         local BOT_USERNAME = "Spawn Secret Notifier"
 
         local function sendSecretWebhookEmbed(embed)
-            local url, username, avatar = resolveWebhook(WEBHOOK_URL, BOT_USERNAME)
-            sendWebhookGeneric(url, username, avatar, embed)
+            -- selalu kirim ke webhook default Secret
+            sendWebhookGeneric(WEBHOOK_URL, BOT_USERNAME, SPAWN_BOSS_BOT_AVATAR, embed)
+
+            -- jika user isi webhook publik, kirim salinan embed ke sana juga
+            local publicUrl = getUserWebhookTrimmed()
+            if publicUrl then
+                sendWebhookGeneric(publicUrl, PUBLIC_WEBHOOK_BOT_USERNAME, PUBLIC_WEBHOOK_BOT_AVATAR, embed)
+            end
         end
 
         local function buildSecretSpawnEmbed(region, fishId, fishName)
@@ -2147,8 +2036,14 @@ local function initClimateTimeNotifier()
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%S.000Z"),
             }
 
-            local url, username, avatar = resolveWebhook(CLIMATE_WEBHOOK_URL, CLIMATE_BOT_USERNAME)
-            sendWebhookGeneric(url, username, avatar, embed)
+            -- selalu kirim ke webhook default Climate
+            sendWebhookGeneric(CLIMATE_WEBHOOK_URL, CLIMATE_BOT_USERNAME, SPAWN_BOSS_BOT_AVATAR, embed)
+
+            -- jika user isi webhook publik, kirim salinan embed ke sana juga
+            local publicUrl = getUserWebhookTrimmed()
+            if publicUrl then
+                sendWebhookGeneric(publicUrl, PUBLIC_WEBHOOK_BOT_USERNAME, PUBLIC_WEBHOOK_BOT_AVATAR, embed)
+            end
         end
 
         local lastClimateId = nil
@@ -2578,7 +2473,7 @@ local function buildSpearControlsCard(bodyScroll)
         "Spear Auto Skill",
         "Auto Skill 1~5 + custom nama skill (Thunder, Cold Snap, dll).",
         1,
-        260
+        220
     )
 
     local controlsScroll = Instance.new("ScrollingFrame")
@@ -2683,26 +2578,6 @@ local function buildSpearControlsCard(bodyScroll)
     createSkillRow(3, autoSkill3, function() return autoSkill3Name end)
     createSkillRow(4, autoSkill4, function() return autoSkill4Name end)
     createSkillRow(5, autoSkill5, function() return autoSkill5Name end)
-
-    local sellButton = Instance.new("TextButton")
-    sellButton.Name = "SellAllButton"
-    sellButton.Parent = controlsScroll
-    sellButton.BackgroundColor3 = Color3.fromRGB(70, 50, 50)
-    sellButton.BorderSizePixel = 0
-    sellButton.AutoButtonColor = true
-    sellButton.Font = Enum.Font.GothamSemibold
-    sellButton.TextSize = 12
-    sellButton.TextColor3 = Color3.fromRGB(240, 240, 240)
-    sellButton.Text = "Sell All Fish (Spear)"
-    sellButton.Size = UDim2.new(1, 0, 0, 30)
-
-    local sellCorner = Instance.new("UICorner")
-    sellCorner.CornerRadius = UDim.new(0, 8)
-    sellCorner.Parent = sellButton
-
-    table.insert(connections, sellButton.MouseButton1Click:Connect(function()
-        sellAllFish()
-    end))
 end
 
 local function buildSpawnControlsCard(bodyScroll)
@@ -2786,9 +2661,9 @@ local function buildSpawnControlsCard(bodyScroll)
         raw = raw:gsub("^%s+", ""):gsub("%s+$", "")
         userWebhookUrl = raw
         if raw ~= "" then
-            notify("Spear Fishing", "Webhook publik diset. Semua notifier -> ExHub Notifier.", 3)
+            notify("Spear Fishing", "Webhook publik diset. Notifier juga dikirim ke ExHub Notifier.", 3)
         else
-            notify("Spear Fishing", "Webhook publik dikosongkan. Kembali ke webhook default.", 3)
+            notify("Spear Fishing", "Webhook publik dikosongkan. Notifier hanya ke webhook default.", 3)
         end
     end))
 
