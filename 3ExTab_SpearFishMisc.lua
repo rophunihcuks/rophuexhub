@@ -57,12 +57,12 @@ local autoSkill5      = false
 local SKILL_ID_TO_NAME = {
     Skill01 = "Thunder",
     Skill02 = "Cold Snap",
-    Skill03 = "Demage Power I",
-    Skill04 = "Demage Power II",
+    Skill03 = "Damage Power I",
+    Skill04 = "Damage Power II",
     Skill05 = "Quick Shoot",
     Skill06 = "Sniper Shot",
     Skill07 = "Laceration Creation",
-    Skill08 = "Demage Power III",
+    Skill08 = "Damage Power III",
     Skill09 = "Chain Lightning",
     Skill10 = "Dragon Flame",
     Skill11 = "Break Shield",
@@ -100,9 +100,9 @@ local function getSkillUiNameFromId(id)
 end
 
 -- Default mapping slot -> SkillID (same as old script, configurable via input)
-local autoSkill1Id = "Skill04" -- Demage Power II
+local autoSkill1Id = "Skill04" -- Damage Power II
 local autoSkill2Id = "Skill02" -- Cold Snap
-local autoSkill3Id = "Skill08" -- Demage Power III
+local autoSkill3Id = "Skill08" -- Damage Power III
 local autoSkill4Id = "Skill01" -- Thunder
 local autoSkill5Id = "Skill07" -- Laceration Creation
 
