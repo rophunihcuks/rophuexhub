@@ -2582,10 +2582,16 @@ task.spawn(function()
     end
 end)
 
+-- OPTIMIZED: auto-refresh By Fish hanya saat benar-benar dipakai
 task.spawn(function()
     while alive do
         pcall(function()
-            refreshPerFishButtons(false)
+            -- Hanya scan Sea (detectCurrentSea) jika:
+            -- 1) Rarity Mode = "By Fish" (index 3)
+            -- 2) Ada AutoFarm berbasis ikan yang ON (All/Rare/Illahi)
+            if rarityModeIndex == 3 and (autoFarmAll or autoFarmRare or autoFarmIllahi) then
+                refreshPerFishButtons(false)
+            end
         end)
         task.wait(3)
     end
