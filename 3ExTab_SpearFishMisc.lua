@@ -104,7 +104,7 @@ local autoSkill1Id = "Skill04" -- Damage Power II
 local autoSkill2Id = "Skill02" -- Cold Snap
 local autoSkill3Id = "Skill08" -- Damage Power III
 local autoSkill4Id = "Skill01" -- Thunder
-local autoSkill5Id = "Skill07" -- Laceration Creation
+local autoSkill5Id = "Skill05" -- Quick Shoot
 
 local autoSkill1Name = getSkillUiNameFromId(autoSkill1Id)
 local autoSkill2Name = getSkillUiNameFromId(autoSkill2Id)
