@@ -95,7 +95,7 @@ local chestHadRecently       = false
 local activeChestTween       = nil
 
 -- AutoTP Boss flags
-local autoTpPoint1Enabled = false
+local autoTpPoint1Enabled = true
 local autoTpPoint2Enabled = false
 
 -- AutoTP Boss coordinates
