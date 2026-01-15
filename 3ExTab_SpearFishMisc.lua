@@ -48,10 +48,10 @@ local espSecret            = false     -- ESP Secret global (default OFF)
 
 -- Auto Skill (slot ON/OFF)
 local autoSkill1      = true
-local autoSkill2      = false
-local autoSkill3      = false
-local autoSkill4      = false
-local autoSkill5      = false
+local autoSkill2      = true
+local autoSkill3      = true
+local autoSkill4      = true
+local autoSkill5      = true
 
 -- Mapping Skill ID -> Name for UI
 local SKILL_ID_TO_NAME = {
