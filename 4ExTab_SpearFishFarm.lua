@@ -70,7 +70,7 @@ end))
 
 -- Auto farm flags
 local autoFarmAll      = true   -- All fish according to Sea filter
-local autoFarmBoss     = true   -- Boss in WorldBoss
+local autoFarmBoss     = true   -- Boss in WorldBoss (Point1, Point2 + Point3/Boss04)
 local autoFarmRare     = false  -- Mythic/Legendary/Secret Sea4, Sea5, Sea8, Sea9
 local autoFarmIllahi   = false  -- Divine Sea6, Sea7, Sea8, Sea10
 
@@ -95,7 +95,7 @@ local chestHadRecently       = false
 local activeChestTween       = nil
 
 -- AutoTP Boss flags
-local autoTpPoint1Enabled = true
+local autoTpPoint1Enabled = false
 local autoTpPoint2Enabled = false
 
 -- AutoTP Boss coordinates
@@ -283,6 +283,7 @@ local BOSS_IDS = {
     Boss01 = true,
     Boss02 = true,
     Boss03 = true,
+    Boss04 = true, -- NEW: Giant Octopus (WorldBoss > Point3 > Boss04)
 }
 
 ------------------- DISPLAY NAME MAP -------------------
@@ -356,6 +357,7 @@ local BOSS_DISPLAY_NAME_MAP = {
     Boss01 = "Humpback Whale",
     Boss02 = "Whale Shark",
     Boss03 = "Crimson Rift Dragon",
+    Boss04 = "Giant Octopus", -- NEW
 }
 
 local function resolveFishDisplayName(rawName)
@@ -1251,7 +1253,8 @@ local function getRegionForBossPart(part)
         return nil
     end
 
-    for _, pointName in ipairs({"Point1", "Point2"}) do
+    -- UPGRADE: support Point3 (Giant Octopus), tapi AutoTP tetap hanya pakai Point1/Point2
+    for _, pointName in ipairs({"Point1", "Point2", "Point3"}) do
         local region = WorldBoss:FindFirstChild(pointName)
         if region and part:IsDescendantOf(region) then
             return pointName
@@ -1355,8 +1358,12 @@ local function autoTeleportBossCheck()
     local nowAlive = isBossAlive()
     if nowAlive and currentBossTargetPart then
         local regionName = getRegionForBossPart(currentBossTargetPart)
+        -- ONLY track Point1/Point2 untuk siklus AutoTP.
+        -- Kalau boss di Point3 (Giant Octopus) / region lain, reset agar tidak salah pakai region lama.
         if regionName == "Point1" or regionName == "Point2" then
             lastBossRegionForTp = regionName
+        else
+            lastBossRegionForTp = nil
         end
     end
 
@@ -1768,7 +1775,8 @@ local function pickBossTarget()
     local bestPart
     local bestDist = math.huge
 
-    for _, pointName in ipairs({"Point1", "Point2"}) do
+    -- UPGRADE: scan Point1, Point2, dan Point3 (Giant Octopus)
+    for _, pointName in ipairs({"Point1", "Point2", "Point3"}) do
         local region = WorldBoss:FindFirstChild(pointName)
         if region then
             local bossPart = getBossPartInRegion(region)
